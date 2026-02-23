@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "leet-review",
+  "compatibility_date": "2026-02-23",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "@tanstack/react-start/server-entry",
+  "vars": {
+    "BETTER_AUTH_URL": "http://localhost:3000"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "leet-review-app",
+      "database_id": "4b47e0bd-0942-469a-9158-1475cd32522c",
+      "migrations_dir": "./drizzle"
+    }
+  ],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  }
+}
