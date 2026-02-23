@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import type { QueryClient } from "@tanstack/react-query";
 import {
@@ -8,6 +7,7 @@ import {
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
+import { useEffect } from "react";
 import type { TRPCRouter } from "@/integrations/trpc/router";
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 import TanStackQueryProvider from "../integrations/tanstack-query/root-provider";
@@ -39,21 +39,32 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 		],
 		links: [
 			{ rel: "stylesheet", href: appCss },
-			{ rel: "icon", href: "/favicon.ico", sizes: "any" },
-			{ rel: "apple-touch-icon", href: "/logo192.png" },
-			{ rel: "manifest", href: "/manifest.json" },
+			{
+				rel: "icon",
+				type: "image/png",
+				sizes: "96x96",
+				href: "/favicon-96x96.png",
+			},
+			{ rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+			{ rel: "shortcut icon", href: "/favicon.ico" },
+			{
+				rel: "apple-touch-icon",
+				sizes: "180x180",
+				href: "/apple-touch-icon.png",
+			},
+			{ rel: "manifest", href: "/site.webmanifest" },
 		],
 	}),
 	shellComponent: RootDocument,
 });
 
 function RootDocument({ children }: { children: React.ReactNode }) {
-  useEffect(() => {
-    if (import.meta.env.DEV) {
-      void import("react-grab");
-      void import("@react-grab/mcp/client");
-    }
-  }, []);
+	useEffect(() => {
+		if (import.meta.env.DEV) {
+			void import("react-grab");
+			void import("@react-grab/mcp/client");
+		}
+	}, []);
 
 	return (
 		<html lang="en">
