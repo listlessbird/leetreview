@@ -1,6 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/_protected/")({ component: App });
+export const Route = createFileRoute("/_protected/")({
+	head: () => ({ meta: [{ title: "Dashboard — leet-review" }] }),
+	component: App,
+});
 
 function App() {
 	const { user } = Route.useRouteContext();

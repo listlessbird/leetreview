@@ -3,7 +3,20 @@ import { useState } from "react";
 import { getSession } from "@/lib/auth.server";
 import { authClient } from "@/lib/auth-client";
 
+const DESCRIPTION =
+	"A personal spaced repetition app for reviewing LeetCode problems before coding interviews. Built by listlessbird.";
+
 export const Route = createFileRoute("/login")({
+	head: () => ({
+		meta: [
+			{ title: "leet-review — LeetCode spaced repetition" },
+			{ name: "description", content: DESCRIPTION },
+			{ property: "og:title", content: "leet-review" },
+			{ property: "og:description", content: DESCRIPTION },
+			{ name: "twitter:title", content: "leet-review" },
+			{ name: "twitter:description", content: DESCRIPTION },
+		],
+	}),
 	beforeLoad: async () => {
 		const session = await getSession();
 		if (session) {

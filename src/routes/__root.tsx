@@ -23,22 +23,27 @@ interface MyRouterContext extends ApolloClientIntegration.RouterContext {
 export const Route = createRootRouteWithContext<MyRouterContext>()({
 	head: () => ({
 		meta: [
+			{ charSet: "utf-8" },
+			{ name: "viewport", content: "width=device-width, initial-scale=1" },
+			{ name: "color-scheme", content: "dark" },
+			{ name: "theme-color", content: "#07070e" },
+			{ name: "author", content: "listlessbird" },
+			{ title: "leet-review" },
 			{
-				charSet: "utf-8",
+				name: "description",
+				content:
+					"Personal spaced repetition for LeetCode interview prep. Built by listlessbird.",
 			},
-			{
-				name: "viewport",
-				content: "width=device-width, initial-scale=1",
-			},
-			{
-				title: "TanStack Start Starter",
-			},
+			{ property: "og:site_name", content: "leet-review" },
+			{ property: "og:type", content: "website" },
+			{ name: "twitter:card", content: "summary" },
+			{ name: "twitter:creator", content: "@listlessbird" },
 		],
 		links: [
-			{
-				rel: "stylesheet",
-				href: appCss,
-			},
+			{ rel: "stylesheet", href: appCss },
+			{ rel: "icon", href: "/favicon.ico", sizes: "any" },
+			{ rel: "apple-touch-icon", href: "/logo192.png" },
+			{ rel: "manifest", href: "/manifest.json" },
 		],
 	}),
 	shellComponent: RootDocument,
