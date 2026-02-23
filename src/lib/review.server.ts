@@ -51,6 +51,17 @@ function startOfTodayUtcUnix() {
 	);
 }
 
+function startOfTomorrowUtcUnix() {
+	const now = new Date();
+	return Math.floor(
+		Date.UTC(
+			now.getUTCFullYear(),
+			now.getUTCMonth(),
+			now.getUTCDate() + 1,
+		) / 1000,
+	);
+}
+
 async function getCurrentUserId() {
 	const request = getRequest();
 	const auth = await getAuthForRequest(request);
@@ -165,7 +176,7 @@ export const addProblemFromUrl = createServerFn({ method: "POST" })
 			id: cardId,
 			userId,
 			problemId,
-			due: ts,
+			due: startOfTomorrowUtcUnix(),
 			stability: baseCard.stability,
 			difficulty: baseCard.difficulty,
 			elapsedDays: baseCard.elapsed_days,
