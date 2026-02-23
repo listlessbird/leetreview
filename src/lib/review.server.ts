@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
-import { and, asc, desc, eq, lte } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, lt, lte, or } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import {
 	type Card,
@@ -38,6 +38,13 @@ function endOfTodayUtcUnix() {
 			1000,
 	);
 	return nextUtcMidnightSeconds - 1;
+}
+
+function startOfTodayUtcUnix() {
+	const now = new Date();
+	return Math.floor(
+		Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) / 1000,
+	);
 }
 
 async function getCurrentUserId() {
@@ -108,6 +115,7 @@ export const getDueCards = createServerFn({ method: "GET" }).handler(
 	async () => {
 		const userId = await getCurrentUserId();
 		const dueBy = endOfTodayUtcUnix();
+		const reviewedBefore = startOfTodayUtcUnix();
 
 		const rows = await db
 			.select({
@@ -122,7 +130,13 @@ export const getDueCards = createServerFn({ method: "GET" }).handler(
 			})
 			.from(cards)
 			.innerJoin(problems, eq(cards.problemId, problems.id))
-			.where(and(eq(cards.userId, userId), lte(cards.due, dueBy)))
+			.where(
+				and(
+					eq(cards.userId, userId),
+					lte(cards.due, dueBy),
+					or(isNull(cards.lastReview), lt(cards.lastReview, reviewedBefore)),
+				),
+			)
 			.orderBy(asc(cards.due));
 
 		return rows.map((row) => ({
