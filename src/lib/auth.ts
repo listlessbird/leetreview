@@ -3,6 +3,7 @@ import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { tanstackStartCookies } from 'better-auth/tanstack-start'
 import { drizzle } from 'drizzle-orm/d1'
 import { env } from '../env'
+import { schema } from '../db/schema'
 
 type RequestWithCf = Request & {
   cf?: IncomingRequestCfProperties
@@ -16,11 +17,18 @@ type CreateAuthOptions = {
 export function createAuth(_options?: CreateAuthOptions) {
   const d1 = _options?.d1
   const database = d1
-    ? drizzleAdapter(drizzle(d1), {
-        provider: 'sqlite',
-        usePlural: true,
-      })
+    ? drizzleAdapter(
+        drizzle(d1, {
+          schema,
+        }),
+        {
+          schema,
+          provider: 'sqlite',
+          usePlural: true,
+        },
+      )
     : drizzleAdapter({} as D1Database, {
+        schema,
         provider: 'sqlite',
         usePlural: true,
       })
