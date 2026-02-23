@@ -52,7 +52,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 			</head>
 			<body>
 				<TanStackQueryProvider>
-					<Header />
 					{children}
 					<TanStackDevtools
 						config={{
