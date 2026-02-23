@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
-import { searchLeetCodeProblems } from "@/lib/leetcode.rpc";
+import { searchLeetCodeProblems } from "@/lib/leetcode.functions";
 import { addProblemFromUrl } from "@/lib/review.server";
 
 /* ─── types ───────────────────────────────────── */
