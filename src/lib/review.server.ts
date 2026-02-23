@@ -244,7 +244,11 @@ export const submitReview = createServerFn({ method: "POST" })
 				: undefined,
 		};
 
-		const scheduler = fsrs();
+		const scheduler = fsrs({
+			enable_short_term: false,
+			learning_steps: [],
+			relearning_steps: [],
+		});
 		const effectiveReviewUnix = Math.max(nowUnix(), existing.due);
 		const next = scheduler.next(
 			fsrsCard,
