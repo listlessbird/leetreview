@@ -76,6 +76,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.4",
+    "@react-grab/mcp": "^0.1.18",
     "@tanstack/devtools-vite": "^0.3.11",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/react": "^16.2.0",
@@ -86,6 +87,7 @@
     "@vitejs/plugin-react": "^5.0.4",
     "dotenv": "^16.0.0",
     "jsdom": "^27.0.0",
+    "react-grab": "^0.1.18",
     "shadcn": "^3.8.5",
     "tsx": "^4.0.0",
     "typescript": "^5.7.2",

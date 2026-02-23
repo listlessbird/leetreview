@@ -78,6 +78,15 @@ bun dev
 
 ## Deployment
 
+### Create KV namespace for LeetCode cache
+
+Create the namespaces and copy the returned IDs into `wrangler.jsonc` under `kv_namespaces` (`LEETCODE_CACHE`):
+
+```bash
+npx wrangler kv namespace create LEETCODE_CACHE
+npx wrangler kv namespace create LEETCODE_CACHE_PREVIEW
+```
+
 ### Cloudflare secrets
 
 ```bash

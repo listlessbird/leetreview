@@ -1,22 +1,30 @@
 {
-  "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "leet-review",
-  "compatibility_date": "2026-02-23",
-  "compatibility_flags": ["nodejs_compat"],
-  "main": "@tanstack/react-start/server-entry",
-  "vars": {
-    "BETTER_AUTH_URL": "https://leet-review.listlessbird.workers.dev"
-  },
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "leet-review-app",
-      "database_id": "4b47e0bd-0942-469a-9158-1475cd32522c",
-      "migrations_dir": "./drizzle"
-    }
-  ],
-  "observability": {
-    "enabled": true,
-    "head_sampling_rate": 1
-  }
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "leet-review",
+	"compatibility_date": "2026-02-23",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"main": "@tanstack/react-start/server-entry",
+	"vars": {
+		"BETTER_AUTH_URL": "https://leet-review.listlessbird.workers.dev"
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "leet-review-app",
+			"database_id": "4b47e0bd-0942-469a-9158-1475cd32522c",
+			"migrations_dir": "./drizzle"
+		}
+	],
+	"kv_namespaces": [
+		{
+			"binding": "LEETCODE_CACHE",
+			"id": "9db51e8c11f8426e96d945128b5e3b92"
+		}
+	],
+	"observability": {
+		"enabled": true,
+		"head_sampling_rate": 1
+	}
 }

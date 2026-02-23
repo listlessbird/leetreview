@@ -13,6 +13,10 @@ import { z } from "zod";
 import { db } from "@/db";
 import { cards, problems, reviewLogs } from "@/db/schema";
 import { getAuthForRequest } from "@/lib/auth";
+import {
+	extractLeetCodeSlug,
+	fetchLeetCodeQuestion,
+} from "@/lib/leetcode.server";
 
 const addProblemInput = z.object({
 	url: z.url(),
@@ -55,60 +59,6 @@ async function getCurrentUserId() {
 		throw new Error("Unauthorized");
 	}
 	return session.user.id;
-}
-
-function extractLeetCodeSlug(url: string) {
-	const parsed = new URL(url);
-	if (!parsed.hostname.includes("leetcode.com")) {
-		throw new Error("Only LeetCode URLs are supported.");
-	}
-
-	const match = parsed.pathname.match(/^\/problems\/([^/]+)\/?/i);
-	if (!match?.[1]) {
-		throw new Error("Invalid LeetCode problem URL.");
-	}
-
-	return match[1].toLowerCase();
-}
-
-async function fetchLeetCodeQuestion(slug: string) {
-	const response = await fetch("https://leetcode.com/graphql", {
-		method: "POST",
-		headers: {
-			"content-type": "application/json",
-			referer: "https://leetcode.com",
-		},
-		body: JSON.stringify({
-			query:
-				"query questionData($titleSlug: String!) { question(titleSlug: $titleSlug) { title difficulty topicTags { name } } }",
-			variables: { titleSlug: slug },
-		}),
-	});
-
-	if (!response.ok) {
-		throw new Error("Failed to fetch problem metadata from LeetCode.");
-	}
-
-	const payload = (await response.json()) as {
-		data?: {
-			question?: {
-				title: string;
-				difficulty: string;
-				topicTags: { name: string }[];
-			} | null;
-		};
-	};
-
-	const question = payload.data?.question;
-	if (!question) {
-		throw new Error("Problem not found on LeetCode.");
-	}
-
-	return {
-		title: question.title,
-		difficulty: question.difficulty,
-		tags: question.topicTags.map((tag) => tag.name),
-	};
 }
 
 export const getDueCards = createServerFn({ method: "GET" }).handler(
