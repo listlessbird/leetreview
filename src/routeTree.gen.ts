@@ -11,9 +11,13 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as ProtectedRouteImport } from './routes/_protected'
-import { Route as ProtectedIndexRouteImport } from './routes/_protected/index'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as ProtectedProblemsRouteImport } from './routes/_protected/problems'
+import { Route as ProtectedDashboardRouteImport } from './routes/_protected/dashboard'
+import { Route as ProtectedAddRouteImport } from './routes/_protected/add'
 import { Route as ApiTrpcSplatRouteImport } from './routes/api.trpc.$'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ProtectedReviewCardIdRouteImport } from './routes/_protected/review/$cardId'
 
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
@@ -24,9 +28,24 @@ const ProtectedRoute = ProtectedRouteImport.update({
   id: '/_protected',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ProtectedIndexRoute = ProtectedIndexRouteImport.update({
+const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProtectedProblemsRoute = ProtectedProblemsRouteImport.update({
+  id: '/problems',
+  path: '/problems',
+  getParentRoute: () => ProtectedRoute,
+} as any)
+const ProtectedDashboardRoute = ProtectedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => ProtectedRoute,
+} as any)
+const ProtectedAddRoute = ProtectedAddRouteImport.update({
+  id: '/add',
+  path: '/add',
   getParentRoute: () => ProtectedRoute,
 } as any)
 const ApiTrpcSplatRoute = ApiTrpcSplatRouteImport.update({
@@ -39,42 +58,80 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProtectedReviewCardIdRoute = ProtectedReviewCardIdRouteImport.update({
+  id: '/review/$cardId',
+  path: '/review/$cardId',
+  getParentRoute: () => ProtectedRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof ProtectedIndexRoute
+  '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/add': typeof ProtectedAddRoute
+  '/dashboard': typeof ProtectedDashboardRoute
+  '/problems': typeof ProtectedProblemsRoute
+  '/review/$cardId': typeof ProtectedReviewCardIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
 }
 export interface FileRoutesByTo {
+  '/': typeof IndexRoute
   '/login': typeof LoginRoute
-  '/': typeof ProtectedIndexRoute
+  '/add': typeof ProtectedAddRoute
+  '/dashboard': typeof ProtectedDashboardRoute
+  '/problems': typeof ProtectedProblemsRoute
+  '/review/$cardId': typeof ProtectedReviewCardIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
   '/_protected': typeof ProtectedRouteWithChildren
   '/login': typeof LoginRoute
-  '/_protected/': typeof ProtectedIndexRoute
+  '/_protected/add': typeof ProtectedAddRoute
+  '/_protected/dashboard': typeof ProtectedDashboardRoute
+  '/_protected/problems': typeof ProtectedProblemsRoute
+  '/_protected/review/$cardId': typeof ProtectedReviewCardIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/trpc/$': typeof ApiTrpcSplatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/api/auth/$' | '/api/trpc/$'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/add'
+    | '/dashboard'
+    | '/problems'
+    | '/review/$cardId'
+    | '/api/auth/$'
+    | '/api/trpc/$'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login' | '/' | '/api/auth/$' | '/api/trpc/$'
+  to:
+    | '/'
+    | '/login'
+    | '/add'
+    | '/dashboard'
+    | '/problems'
+    | '/review/$cardId'
+    | '/api/auth/$'
+    | '/api/trpc/$'
   id:
     | '__root__'
+    | '/'
     | '/_protected'
     | '/login'
-    | '/_protected/'
+    | '/_protected/add'
+    | '/_protected/dashboard'
+    | '/_protected/problems'
+    | '/_protected/review/$cardId'
     | '/api/auth/$'
     | '/api/trpc/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
   ProtectedRoute: typeof ProtectedRouteWithChildren
   LoginRoute: typeof LoginRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
@@ -97,11 +154,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProtectedRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_protected/': {
-      id: '/_protected/'
+    '/': {
+      id: '/'
       path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof ProtectedIndexRouteImport
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_protected/problems': {
+      id: '/_protected/problems'
+      path: '/problems'
+      fullPath: '/problems'
+      preLoaderRoute: typeof ProtectedProblemsRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/dashboard': {
+      id: '/_protected/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof ProtectedDashboardRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
+    '/_protected/add': {
+      id: '/_protected/add'
+      path: '/add'
+      fullPath: '/add'
+      preLoaderRoute: typeof ProtectedAddRouteImport
       parentRoute: typeof ProtectedRoute
     }
     '/api/trpc/$': {
@@ -118,15 +196,28 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_protected/review/$cardId': {
+      id: '/_protected/review/$cardId'
+      path: '/review/$cardId'
+      fullPath: '/review/$cardId'
+      preLoaderRoute: typeof ProtectedReviewCardIdRouteImport
+      parentRoute: typeof ProtectedRoute
+    }
   }
 }
 
 interface ProtectedRouteChildren {
-  ProtectedIndexRoute: typeof ProtectedIndexRoute
+  ProtectedAddRoute: typeof ProtectedAddRoute
+  ProtectedDashboardRoute: typeof ProtectedDashboardRoute
+  ProtectedProblemsRoute: typeof ProtectedProblemsRoute
+  ProtectedReviewCardIdRoute: typeof ProtectedReviewCardIdRoute
 }
 
 const ProtectedRouteChildren: ProtectedRouteChildren = {
-  ProtectedIndexRoute: ProtectedIndexRoute,
+  ProtectedAddRoute: ProtectedAddRoute,
+  ProtectedDashboardRoute: ProtectedDashboardRoute,
+  ProtectedProblemsRoute: ProtectedProblemsRoute,
+  ProtectedReviewCardIdRoute: ProtectedReviewCardIdRoute,
 }
 
 const ProtectedRouteWithChildren = ProtectedRoute._addFileChildren(
@@ -134,6 +225,7 @@ const ProtectedRouteWithChildren = ProtectedRoute._addFileChildren(
 )
 
 const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
   ProtectedRoute: ProtectedRouteWithChildren,
   LoginRoute: LoginRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,

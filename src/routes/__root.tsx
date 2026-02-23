@@ -1,4 +1,3 @@
-import type { ApolloClientIntegration } from "@apollo/client-integration-tanstack-start";
 import { TanStackDevtools } from "@tanstack/react-devtools";
 import type { QueryClient } from "@tanstack/react-query";
 import {
@@ -9,14 +8,12 @@ import {
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import type { TRPCRouter } from "@/integrations/trpc/router";
-import Header from "../components/Header";
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 import TanStackQueryProvider from "../integrations/tanstack-query/root-provider";
 import appCss from "../styles.css?url";
 
-interface MyRouterContext extends ApolloClientIntegration.RouterContext {
+interface MyRouterContext {
 	queryClient: QueryClient;
-
 	trpc: TRPCOptionsProxy<TRPCRouter>;
 }
 

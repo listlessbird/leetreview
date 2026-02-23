@@ -9,7 +9,7 @@ export const Route = createFileRoute("/_protected")({
 		const session = await getSession();
 		if (!session) {
 			throw redirect({
-				to: "/login",
+				to: "/",
 				search: { redirect: location.href },
 			});
 		}

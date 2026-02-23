@@ -15,9 +15,10 @@ bun run deploy       # build + wrangler deploy
 bun run auth:generate   # generate Better Auth schema → src/db/auth.schema.ts
 bun run auth:migrate    # run Better Auth migrations via CLI
 
-# Database (Drizzle)
+# Database (Drizzle + D1)
 bun run db:generate  # generate SQL migrations from schema
-bun run db:migrate   # apply migrations (uses d1-http driver)
+bun run db:migrate   # apply migrations to local D1 via wrangler
+bun run db:migrate:remote # apply migrations to remote D1 via wrangler
 bun run db:push      # push schema directly (dev only)
 bun run db:pull      # pull schema from DB
 bun run db:studio    # open Drizzle Studio
@@ -95,4 +96,46 @@ npx wrangler d1 migrations apply leet-review-app --remote
 
 ```bash
 bun run deploy
+```
+
+## Database workflow (important)
+
+Use a single migration path to avoid drift:
+
+1. Update schema in `src/db/schema.ts`
+2. Generate SQL migration file:
+```bash
+bun run db:generate
+```
+3. Apply to local D1:
+```bash
+bun run db:migrate
+```
+4. Apply to remote D1:
+```bash
+bun run db:migrate:remote
+```
+
+Avoid mixing migration systems:
+
+- Do not use `drizzle-kit migrate` for this project
+- Use `db:push` / `db:pull` only for one-off inspection/debugging
+
+Check local migration state:
+
+```bash
+bunx wrangler d1 execute leet-review-app --local --command "SELECT * FROM d1_migrations ORDER BY id;"
+```
+
+Check local tables:
+
+```bash
+bunx wrangler d1 execute leet-review-app --local --command "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;"
+```
+
+If local state gets inconsistent, reset local D1 and re-apply migrations:
+
+```bash
+rm -rf .wrangler/state/v3/d1
+bun run db:migrate
 ```

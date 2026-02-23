@@ -15,6 +15,13 @@
       "when": 1771818593205,
       "tag": "0001_clean_odin",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1771845900000,
+      "tag": "0002_core_flows",
+      "breakpoints": true
     }
   ]
 }

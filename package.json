@@ -18,7 +18,8 @@
     "auth:generate": "bunx --bun @better-auth/cli@latest generate --config src/lib/auth.ts --output src/db/auth.schema.ts -y",
     "auth:migrate": "bunx --bun @better-auth/cli@latest migrate --config src/lib/auth.ts -y",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
+    "db:migrate": "wrangler d1 migrations apply leet-review-app --local",
+    "db:migrate:remote": "wrangler d1 migrations apply leet-review-app --remote",
     "db:push": "drizzle-kit push",
     "db:pull": "drizzle-kit pull",
     "db:studio": "drizzle-kit studio"
