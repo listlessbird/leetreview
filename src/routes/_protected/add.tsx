@@ -20,7 +20,11 @@ function AddProblemPage() {
 			await addProblemFromUrl({ data: { url } });
 			await navigate({ to: "/dashboard" });
 		} catch (submissionError) {
-			setError(submissionError instanceof Error ? submissionError.message : "Could not add problem.");
+			setError(
+				submissionError instanceof Error
+					? submissionError.message
+					: "Could not add problem.",
+			);
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -29,8 +33,12 @@ function AddProblemPage() {
 	return (
 		<div className="min-h-screen bg-[#07070e] p-8 font-berkeley text-[#ededf5]">
 			<div className="mx-auto w-full max-w-2xl rounded border border-white/10 bg-white/5 p-6">
-				<h1 className="mb-2 text-2xl font-bold tracking-tight">Add LeetCode Problem</h1>
-				<p className="mb-6 text-sm text-white/65">Paste a URL like https://leetcode.com/problems/two-sum/</p>
+				<h1 className="mb-2 text-2xl font-bold tracking-tight">
+					Add LeetCode Problem
+				</h1>
+				<p className="mb-6 text-sm text-white/65">
+					Paste a URL like https://leetcode.com/problems/two-sum/
+				</p>
 				<form className="space-y-4" onSubmit={onSubmit}>
 					<input
 						type="url"

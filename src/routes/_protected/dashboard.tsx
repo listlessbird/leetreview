@@ -1,9 +1,17 @@
 import { Link, createFileRoute, useRouter } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
+import { RouteErrorBoundary } from "@/components/route-error-boundary";
 import { addProblemFromUrl, getDueCards } from "@/lib/review.server";
 
 export const Route = createFileRoute("/_protected/dashboard")({
 	loader: async () => getDueCards(),
+	errorComponent: ({ error, reset }) => (
+		<RouteErrorBoundary
+			error={error}
+			reset={reset}
+			title="Couldn't load dashboard"
+		/>
+	),
 	component: DashboardPage,
 });
 
@@ -39,7 +47,9 @@ function DashboardPage() {
 		<div className="min-h-screen bg-[#07070e] p-8 font-berkeley text-[#ededf5]">
 			<div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
 				<header className="flex flex-wrap items-center justify-between gap-3">
-					<h1 className="text-2xl font-bold tracking-tight">Today's Due Reviews</h1>
+					<h1 className="text-2xl font-bold tracking-tight">
+						Today's Due Reviews
+					</h1>
 					<div className="flex items-center gap-3 text-sm">
 						<button
 							type="button"
@@ -48,7 +58,10 @@ function DashboardPage() {
 						>
 							Add problem
 						</button>
-						<Link className="underline decoration-white/30 underline-offset-4" to="/problems">
+						<Link
+							className="underline decoration-white/30 underline-offset-4"
+							to="/problems"
+						>
 							All problems
 						</Link>
 					</div>
@@ -61,11 +74,16 @@ function DashboardPage() {
 				) : (
 					<ul className="space-y-3">
 						{dueCards.map((card) => (
-							<li key={card.cardId} className="rounded border border-white/10 bg-white/5 p-4">
+							<li
+								key={card.cardId}
+								className="rounded border border-white/10 bg-white/5 p-4"
+							>
 								<div className="mb-2 flex items-center justify-between gap-4">
 									<div>
 										<h2 className="text-lg font-semibold">{card.title}</h2>
-										<p className="text-xs uppercase tracking-wide text-white/60">{card.difficulty}</p>
+										<p className="text-xs uppercase tracking-wide text-white/60">
+											{card.difficulty}
+										</p>
 									</div>
 									<Link
 										to="/review/$cardId"
@@ -77,7 +95,10 @@ function DashboardPage() {
 								</div>
 								<div className="flex flex-wrap gap-2">
 									{card.tags.map((tag) => (
-										<span key={tag} className="rounded border border-white/15 px-2 py-1 text-xs text-white/70">
+										<span
+											key={tag}
+											className="rounded border border-white/15 px-2 py-1 text-xs text-white/70"
+										>
 											{tag}
 										</span>
 									))}

@@ -31,6 +31,15 @@ function nowUnix() {
 	return Math.floor(Date.now() / 1000);
 }
 
+function endOfTodayUtcUnix() {
+	const now = new Date();
+	const nextUtcMidnightSeconds = Math.floor(
+		Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1) /
+			1000,
+	);
+	return nextUtcMidnightSeconds - 1;
+}
+
 async function getCurrentUserId() {
 	const request = getRequest();
 	const auth = await getAuthForRequest(request);
@@ -98,7 +107,7 @@ async function fetchLeetCodeQuestion(slug: string) {
 export const getDueCards = createServerFn({ method: "GET" }).handler(
 	async () => {
 		const userId = await getCurrentUserId();
-		const now = nowUnix();
+		const dueBy = endOfTodayUtcUnix();
 
 		const rows = await db
 			.select({
@@ -113,7 +122,7 @@ export const getDueCards = createServerFn({ method: "GET" }).handler(
 			})
 			.from(cards)
 			.innerJoin(problems, eq(cards.problemId, problems.id))
-			.where(and(eq(cards.userId, userId), lte(cards.due, now)))
+			.where(and(eq(cards.userId, userId), lte(cards.due, dueBy)))
 			.orderBy(asc(cards.due));
 
 		return rows.map((row) => ({
@@ -272,7 +281,12 @@ export const submitReview = createServerFn({ method: "POST" })
 		};
 
 		const scheduler = fsrs();
-		const next = scheduler.next(fsrsCard, new Date(), data.rating as Grade);
+		const effectiveReviewUnix = Math.max(nowUnix(), existing.due);
+		const next = scheduler.next(
+			fsrsCard,
+			new Date(effectiveReviewUnix * 1000),
+			data.rating as Grade,
+		);
 		const nextCard = next.card;
 		const reviewLog = next.log;
 
