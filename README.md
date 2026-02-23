@@ -1,6 +1,6 @@
 # leet-review
 
-A personal spaced repetition app for reviewing LeetCode problems before coding interviews. Add problem URLs, let [FSRS](https://github.com/open-spaced-repetition/fsrs4anki/wiki/The-Algorithm) schedule your reviews, and rate your recall each day.
+A personal spaced repetition app for reviewing LeetCode problems before coding interviews. Add problems, let [FSRS](https://github.com/open-spaced-repetition/fsrs4anki/wiki/The-Algorithm) schedule your reviews, and rate your recall each day.
 
 ## Scripts
 
