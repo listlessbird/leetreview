@@ -5,6 +5,7 @@ import { nanoid } from "nanoid";
 import {
 	type Card,
 	createEmptyCard,
+	type FSRSParameters,
 	fsrs,
 	type Grade,
 	type State,
@@ -31,6 +32,15 @@ const cardIdInput = z.object({
 	cardId: z.string().min(1),
 });
 
+const FSRS_CONFIG: Partial<FSRSParameters> = {
+	request_retention: 0.93,
+	maximum_interval: 45,
+	enable_fuzz: true,
+	enable_short_term: false,
+	learning_steps: [],
+	relearning_steps: [],
+};
+
 function nowUnix() {
 	return Math.floor(Date.now() / 1000);
 }
@@ -54,12 +64,40 @@ function startOfTodayUtcUnix() {
 function startOfTomorrowUtcUnix() {
 	const now = new Date();
 	return Math.floor(
-		Date.UTC(
-			now.getUTCFullYear(),
-			now.getUTCMonth(),
-			now.getUTCDate() + 1,
-		) / 1000,
+		Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1) /
+			1000,
 	);
+}
+
+function seedCardByProblemDifficulty(
+	card: Card,
+	problemDifficulty: string,
+): Card {
+	const normalized = problemDifficulty.trim().toLowerCase();
+
+	// FSRS difficulty is memory-difficulty (1-10), not LeetCode label.
+	if (normalized === "hard") {
+		return {
+			...card,
+			difficulty: 7.5,
+			stability: 0.2,
+		};
+	}
+	if (normalized === "medium") {
+		return {
+			...card,
+			difficulty: 6.0,
+			stability: 0.3,
+		};
+	}
+	if (normalized === "easy") {
+		return {
+			...card,
+			difficulty: 4.5,
+			stability: 0.5,
+		};
+	}
+	return card;
 }
 
 async function getCurrentUserId() {
@@ -159,7 +197,10 @@ export const addProblemFromUrl = createServerFn({ method: "POST" })
 		const problemId = nanoid();
 		const cardId = nanoid();
 		const ts = nowUnix();
-		const baseCard = createEmptyCard(new Date());
+		const baseCard = seedCardByProblemDifficulty(
+			createEmptyCard(new Date()),
+			metadata.difficulty,
+		);
 
 		await db.insert(problems).values({
 			id: problemId,
@@ -255,11 +296,7 @@ export const submitReview = createServerFn({ method: "POST" })
 				: undefined,
 		};
 
-		const scheduler = fsrs({
-			enable_short_term: false,
-			learning_steps: [],
-			relearning_steps: [],
-		});
+		const scheduler = fsrs(FSRS_CONFIG);
 		const effectiveReviewUnix = Math.max(nowUnix(), existing.due);
 		const next = scheduler.next(
 			fsrsCard,
