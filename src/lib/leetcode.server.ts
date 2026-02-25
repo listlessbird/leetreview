@@ -34,14 +34,21 @@ export type SearchResult = {
 };
 
 export type SearchExecutionMeta = {
-	path: "url_slug" | "api_search";
+	path: "url_slug" | "kv_index";
 	cache_hit: boolean;
 	upstream_status_code: number | null;
 	result_count: number;
 };
 
 const QUESTION_META_TTL_SECONDS = 60 * 60 * 24 * 30;
-const SEARCH_RESULTS_TTL_SECONDS = 60 * 60 * 24 * 30;
+const PROBLEMSET_CACHE_KEY = "leetcode:problemset:v1";
+
+type CachedProblem = {
+	slug: string;
+	title: string;
+	difficulty: string;
+	tags: string[];
+};
 
 async function getLeetCodeCacheBinding() {
 	try {
@@ -73,6 +80,62 @@ async function cachePutJson(
 	const cache = await getLeetCodeCacheBinding();
 	if (!cache) return;
 	await cache.put(key, JSON.stringify(value), { expirationTtl });
+}
+
+let problemsetIndexPromise: Promise<CachedProblem[]> | null = null;
+
+async function getProblemsetIndex(): Promise<CachedProblem[]> {
+	if (!problemsetIndexPromise) {
+		problemsetIndexPromise = (async () => {
+			const index = await cacheGetJson<CachedProblem[]>(PROBLEMSET_CACHE_KEY);
+			if (!index?.length) {
+				throw new Error(
+					"LeetCode cache is empty. Populate KV key `leetcode:problemset:v1` first.",
+				);
+			}
+			return index;
+		})();
+	}
+	return problemsetIndexPromise;
+}
+
+function toSearchResult(problem: CachedProblem): SearchResult {
+	return {
+		title: problem.title,
+		slug: problem.slug,
+		difficulty: problem.difficulty,
+		url: `https://leetcode.com/problems/${problem.slug}/`,
+	};
+}
+
+function rankResults(queryInput: string, all: CachedProblem[]): SearchResult[] {
+	const query = queryInput.trim().toLowerCase();
+	const slugQuery = normalizeForMatch(queryInput);
+	const queryTokens = query.split(/[\s-]+/).filter(Boolean);
+
+	const scored = all
+		.map((problem) => {
+			const title = problem.title.toLowerCase();
+			const slug = problem.slug.toLowerCase();
+
+			let score = 0;
+			if (slug === slugQuery || title === query) score += 200;
+			if (slug.startsWith(slugQuery)) score += 120;
+			if (title.startsWith(query)) score += 100;
+			if (slug.includes(slugQuery)) score += 60;
+			if (title.includes(query)) score += 50;
+			for (const token of queryTokens) {
+				if (slug.includes(token)) score += 10;
+				if (title.includes(token)) score += 8;
+			}
+
+			return { score, problem };
+		})
+		.filter((item) => item.score > 0)
+		.sort((a, b) => b.score - a.score || a.problem.title.localeCompare(b.problem.title))
+		.slice(0, 10);
+
+	return scored.map((item) => toSearchResult(item.problem));
 }
 
 export async function fetchLeetCodeQuestion(slug: string) {
@@ -132,8 +195,23 @@ export async function searchLeetCodeProblemsImpl(queryInput: string): Promise<{
 	results: SearchResult[];
 	meta: SearchExecutionMeta;
 }> {
+	const index = await getProblemsetIndex();
 	const fromUrlSlug = tryExtractLeetCodeSlug(queryInput);
 	if (fromUrlSlug) {
+		const fromIndex = index.find((problem) => problem.slug === fromUrlSlug);
+		if (fromIndex) {
+			const results = [toSearchResult(fromIndex)] satisfies SearchResult[];
+			return {
+				results,
+				meta: {
+					path: "url_slug",
+					cache_hit: true,
+					upstream_status_code: null,
+					result_count: results.length,
+				},
+			};
+		}
+
 		const question = await fetchLeetCodeQuestion(fromUrlSlug);
 		const results = [
 			{
@@ -154,82 +232,13 @@ export async function searchLeetCodeProblemsImpl(queryInput: string): Promise<{
 		};
 	}
 
-	const normalizedQuery = queryInput.trim().toLowerCase();
-	const searchCacheKey = `leetcode:search:v1:${normalizedQuery}`;
-	const cachedResults = await cacheGetJson<SearchResult[]>(searchCacheKey);
-	if (cachedResults) {
-		return {
-			results: cachedResults,
-			meta: {
-				path: "api_search",
-				cache_hit: true,
-				upstream_status_code: null,
-				result_count: cachedResults.length,
-			},
-		};
-	}
-
-	const response = await fetch(
-		"https://leetcode-api-pied.vercel.app/search?query=" +
-			encodeURIComponent(queryInput),
-		{
-			method: "GET",
-			headers: {
-				accept: "application/json",
-			},
-		},
-	);
-
-	const rawText = await response.text();
-	if (!response.ok) {
-		throw new Error("Failed to search LeetCode problems.");
-	}
-
-	const payload = JSON.parse(rawText) as {
-		title?: string;
-		title_slug?: string;
-		url?: string;
-	}[];
-	const query = queryInput.trim().toLowerCase();
-	const slugQuery = normalizeForMatch(queryInput);
-
-	const ranked = payload
-		.map((question) => ({
-			title: question.title ?? "",
-			slug: question.title_slug ?? "",
-			difficulty: null as string | null,
-			url:
-				question.url ??
-				(question.title_slug
-					? `https://leetcode.com/problems/${question.title_slug}/`
-					: ""),
-		}))
-		.filter((question) => Boolean(question.title && question.slug && question.url))
-		.slice(0, 10)
-		.sort((a, b) => {
-			const aTitle = a.title.toLowerCase();
-			const bTitle = b.title.toLowerCase();
-			const aExact = a.slug === slugQuery || aTitle === query;
-			const bExact = b.slug === slugQuery || bTitle === query;
-			if (aExact !== bExact) return aExact ? -1 : 1;
-
-			const aPrefix = a.slug.startsWith(slugQuery) || aTitle.startsWith(query);
-			const bPrefix = b.slug.startsWith(slugQuery) || bTitle.startsWith(query);
-			if (aPrefix !== bPrefix) return aPrefix ? -1 : 1;
-
-			const aContains = a.slug.includes(slugQuery) || aTitle.includes(query);
-			const bContains = b.slug.includes(slugQuery) || bTitle.includes(query);
-			if (aContains !== bContains) return aContains ? -1 : 1;
-
-			return a.title.localeCompare(b.title);
-		});
-	await cachePutJson(searchCacheKey, ranked, SEARCH_RESULTS_TTL_SECONDS);
+	const ranked = rankResults(queryInput, index);
 	return {
 		results: ranked,
 		meta: {
-			path: "api_search",
+			path: "kv_index",
 			cache_hit: false,
-			upstream_status_code: response.status,
+			upstream_status_code: null,
 			result_count: ranked.length,
 		},
 	};
