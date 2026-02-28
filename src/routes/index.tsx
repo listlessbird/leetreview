@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useState } from "react";
-import { getSession } from "@/lib/auth.server";
+import { getSession } from "@/lib/auth.functions";
 import { authClient } from "@/lib/auth-client";
 
 export const Route = createFileRoute("/")({

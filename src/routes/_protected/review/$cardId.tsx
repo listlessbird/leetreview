@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { RouteErrorBoundary } from "@/components/route-error-boundary";
-import { getReviewCard, submitReview } from "@/lib/review.server";
+import { getReviewCard, submitReview } from "@/lib/review.functions";
 
 export const Route = createFileRoute("/_protected/review/$cardId")({
 	loader: async ({ params }) =>

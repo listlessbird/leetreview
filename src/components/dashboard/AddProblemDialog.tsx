@@ -11,7 +11,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { searchLeetCodeProblems } from "@/lib/leetcode.functions";
-import { addProblemFromUrl } from "@/lib/review.server";
+import { addProblemFromUrl } from "@/lib/review.functions";
 
 /* ─── types ───────────────────────────────────── */
 

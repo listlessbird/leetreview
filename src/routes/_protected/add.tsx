@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
-import { addProblemFromUrl } from "@/lib/review.server";
+import { addProblemFromUrl } from "@/lib/review.functions";
 
 export const Route = createFileRoute("/_protected/add")({
 	component: AddProblemPage,
