@@ -22,6 +22,8 @@ import { DataTableColumnHeader } from "@/components/data-table/data-table-column
 import { useAdaptiveNow } from "@/hooks/use-adaptive-now";
 import { formatDueExact, formatDueRelative } from "@/lib/due-date";
 import { RouteErrorBoundary } from "@/components/route-error-boundary";
+import { BadgeOverflow } from "@/components/ui/badge-overflow";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
 	Tooltip,
@@ -129,18 +131,7 @@ function DashboardPage() {
 				header: ({ column }) => (
 					<DataTableColumnHeader column={column} label="Tags" />
 				),
-				cell: ({ row }) => (
-					<div className="flex max-w-[22rem] flex-wrap gap-2">
-						{row.original.tags.map((tag) => (
-							<span
-								key={tag}
-								className="rounded border border-white/15 px-2 py-1 text-xs text-white/70"
-							>
-								{tag}
-							</span>
-						))}
-					</div>
-				),
+				cell: ({ row }) => <TagsCell tags={row.original.tags} />,
 			},
 			{
 				id: "due",
@@ -285,6 +276,45 @@ function LocalDueDate({ dueUnix, nowMs }: { dueUnix: number; nowMs: number }) {
 				className="border border-white/15 bg-[#0d0d16] text-[#ededf5]"
 			>
 				{exact}
+			</TooltipContent>
+		</Tooltip>
+	);
+}
+
+function TagsCell({ tags }: { tags: string[] }) {
+	const fullTags = tags.join(", ");
+
+	return (
+		<Tooltip>
+			<TooltipTrigger asChild>
+				<div className="max-w-[22rem] cursor-help">
+					<BadgeOverflow
+						items={tags}
+						lineCount={2}
+						renderBadge={(_, label) => (
+							<Badge
+								variant="outline"
+								className="h-5 border-white/15 bg-transparent px-1.5 text-[11px] text-white/70"
+							>
+								{label}
+							</Badge>
+						)}
+						renderOverflow={(count) => (
+							<Badge
+								variant="outline"
+								className="h-5 border-white/20 bg-white/[0.04] px-1.5 text-[11px] text-white/80"
+							>
+								+{count}
+							</Badge>
+						)}
+					/>
+				</div>
+			</TooltipTrigger>
+			<TooltipContent
+				sideOffset={6}
+				className="max-w-[32rem] border border-white/15 bg-[#0d0d16] text-[#ededf5]"
+			>
+				{fullTags || "No tags"}
 			</TooltipContent>
 		</Tooltip>
 	);
