@@ -1,7 +1,7 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "leet-review",
-	"compatibility_date": "2026-02-23",
+	"compatibility_date": "2026-02-19",
 	"compatibility_flags": [
 		"nodejs_compat"
 	],
@@ -17,6 +17,28 @@
 			"migrations_dir": "./drizzle"
 		}
 	],
+	"env": {
+		"preview": {
+			"name": "leet-review-preview",
+			"vars": {
+				"BETTER_AUTH_URL": "https://leet-review.listlessbird.workers.dev"
+			},
+			"d1_databases": [
+				{
+					"binding": "DB",
+					"database_name": "leet-review-preview",
+					"database_id": "eaeafd17-f8fd-4cc0-b11a-8b91a9671ab6",
+					"migrations_dir": "./drizzle"
+				}
+			],
+			"kv_namespaces": [
+				{
+					"binding": "LEETCODE_CACHE",
+					"id": "9db51e8c11f8426e96d945128b5e3b92"
+				}
+			]
+		}
+	},
 	"kv_namespaces": [
 		{
 			"binding": "LEETCODE_CACHE",

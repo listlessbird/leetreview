@@ -16,16 +16,32 @@ export const problems = sqliteTable(
 			.notNull()
 			.references(() => authSchema.users.id, { onDelete: "cascade" }),
 		slug: text("slug").notNull(),
+		type: text("type").notNull().default("leetcode"),
 		title: text("title").notNull(),
 		difficulty: text("difficulty").notNull(),
 		tags: text("tags").notNull(),
-		url: text("url").notNull(),
+		url: text("url"),
 		createdAt: integer("created_at").notNull(),
 	},
 	(table) => [
 		index("problems_user_id_idx").on(table.userId),
 		uniqueIndex("problems_user_slug_unique").on(table.userId, table.slug),
 	],
+);
+
+export const problemResources = sqliteTable(
+	"problem_resources",
+	{
+		id: text("id").primaryKey(),
+		problemId: text("problem_id")
+			.notNull()
+			.references(() => problems.id, { onDelete: "cascade" }),
+		url: text("url").notNull(),
+		title: text("title"),
+		sortOrder: integer("sort_order").notNull(),
+		createdAt: integer("created_at").notNull(),
+	},
+	(table) => [index("problem_resources_problem_id_idx").on(table.problemId)],
 );
 
 export const cards = sqliteTable(
@@ -86,6 +102,7 @@ export const reviewLogs = sqliteTable(
 export const schema = {
 	...authSchema,
 	problems,
+	problemResources,
 	cards,
 	reviewLogs,
 } as const;

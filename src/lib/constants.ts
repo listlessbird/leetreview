@@ -1,0 +1,1 @@
+export const SYSTEM_DESIGN_DAILY_REVIEW_LIMIT = 3;
