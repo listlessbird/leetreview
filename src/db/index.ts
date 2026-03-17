@@ -1,5 +1,6 @@
 import { env as workerEnv } from "cloudflare:workers";
 import { drizzle } from "drizzle-orm/d1";
+import { Context, Layer } from "effect";
 
 import { schema } from "./schema.ts";
 
@@ -14,3 +15,12 @@ function getD1Binding() {
 }
 
 export const db = drizzle(getD1Binding(), { schema });
+
+export class DrizzleDb extends Context.Tag("@/db/DrizzleDb")<
+	DrizzleDb,
+	{
+		readonly db: typeof db;
+	}
+>() {}
+
+export const drizzleDbLayer = Layer.succeed(DrizzleDb, { db });

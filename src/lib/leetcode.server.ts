@@ -1,5 +1,34 @@
 import "@tanstack/react-start/server-only";
 
+import { Context, Effect, Layer, Schema } from "effect";
+
+class LeetCodeInputError extends Schema.TaggedError<LeetCodeInputError>()(
+	"LeetCodeInputError",
+	{
+		message: Schema.String,
+	},
+) {}
+
+class LeetCodeUnavailableError extends Schema.TaggedError<LeetCodeUnavailableError>()(
+	"LeetCodeUnavailableError",
+	{
+		message: Schema.String,
+		error: Schema.Defect,
+	},
+) {}
+
+class LeetCodeCacheError extends Schema.TaggedError<LeetCodeCacheError>()(
+	"LeetCodeCacheError",
+	{
+		message: Schema.String,
+	},
+) {}
+
+export type LeetCodeError =
+	| LeetCodeInputError
+	| LeetCodeUnavailableError
+	| LeetCodeCacheError;
+
 export function extractLeetCodeSlug(url: string) {
 	const parsed = new URL(url);
 	if (!parsed.hostname.includes("leetcode.com")) {
@@ -50,6 +79,12 @@ type CachedProblem = {
 	tags: string[];
 };
 
+type QuestionMetadata = {
+	title: string;
+	difficulty: string;
+	tags: string[];
+};
+
 async function getLeetCodeCacheBinding() {
 	try {
 		const { env } = await import("cloudflare:workers");
@@ -60,44 +95,85 @@ async function getLeetCodeCacheBinding() {
 	}
 }
 
-async function cacheGetJson<T>(key: string): Promise<T | null> {
-	const cache = await getLeetCodeCacheBinding();
+const cacheGetJson = Effect.fn("LeetCode.cacheGetJson")(function* <T>(
+	key: string,
+) {
+	const cache = yield* Effect.tryPromise({
+		try: () => getLeetCodeCacheBinding(),
+		catch: (error) =>
+			LeetCodeUnavailableError.make({
+				message: "Unable to access the LeetCode KV binding.",
+				error,
+			}),
+	});
 	if (!cache) return null;
-	const raw = await cache.get(key);
-	if (!raw) return null;
-	try {
-		return JSON.parse(raw) as T;
-	} catch {
-		return null;
-	}
-}
 
-async function cachePutJson(
+	const raw = yield* Effect.tryPromise({
+		try: () => cache.get(key),
+		catch: (error) =>
+			LeetCodeUnavailableError.make({
+				message: `Failed to read LeetCode cache key "${key}".`,
+				error,
+			}),
+	});
+	if (!raw) return null;
+
+	return yield* Effect.try({
+		try: () => JSON.parse(raw) as T,
+		catch: () =>
+			LeetCodeCacheError.make({
+				message: `LeetCode cache key "${key}" contains invalid JSON.`,
+			}),
+	});
+});
+
+const cachePutJson = Effect.fn("LeetCode.cachePutJson")(function* (
 	key: string,
 	value: unknown,
 	expirationTtl: number,
-): Promise<void> {
-	const cache = await getLeetCodeCacheBinding();
+) {
+	const cache = yield* Effect.tryPromise({
+		try: () => getLeetCodeCacheBinding(),
+		catch: (error) =>
+			LeetCodeUnavailableError.make({
+				message: "Unable to access the LeetCode KV binding.",
+				error,
+			}),
+	});
 	if (!cache) return;
-	await cache.put(key, JSON.stringify(value), { expirationTtl });
-}
 
-let problemsetIndexPromise: Promise<CachedProblem[]> | null = null;
+	yield* Effect.tryPromise({
+		try: () => cache.put(key, JSON.stringify(value), { expirationTtl }),
+		catch: (error) =>
+			LeetCodeUnavailableError.make({
+				message: `Failed to write LeetCode cache key "${key}".`,
+				error,
+			}),
+	});
+});
 
-async function getProblemsetIndex(): Promise<CachedProblem[]> {
-	if (!problemsetIndexPromise) {
-		problemsetIndexPromise = (async () => {
-			const index = await cacheGetJson<CachedProblem[]>(PROBLEMSET_CACHE_KEY);
-			if (!index?.length) {
-				throw new Error(
+const loadProblemsetIndex = Effect.fn("LeetCode.loadProblemsetIndex")(
+	function* () {
+		const index = yield* cacheGetJson<CachedProblem[]>(PROBLEMSET_CACHE_KEY);
+		if (!index?.length) {
+			return yield* LeetCodeCacheError.make({
+				message:
 					"LeetCode cache is empty. Populate KV key `leetcode:problemset:v1` first.",
-				);
-			}
-			return index;
-		})();
-	}
-	return problemsetIndexPromise;
-}
+			});
+		}
+		return index;
+	},
+);
+
+const cachedProblemsetIndex = Effect.runSync(
+	Effect.cached(loadProblemsetIndex()),
+);
+
+const getProblemsetIndex = Effect.fn("LeetCode.getProblemsetIndex")(
+	function* () {
+		return yield* cachedProblemsetIndex;
+	},
+);
 
 function toSearchResult(problem: CachedProblem): SearchResult {
 	return {
@@ -132,114 +208,160 @@ function rankResults(queryInput: string, all: CachedProblem[]): SearchResult[] {
 			return { score, problem };
 		})
 		.filter((item) => item.score > 0)
-		.sort((a, b) => b.score - a.score || a.problem.title.localeCompare(b.problem.title))
+		.sort(
+			(a, b) =>
+				b.score - a.score || a.problem.title.localeCompare(b.problem.title),
+		)
 		.slice(0, 10);
 
 	return scored.map((item) => toSearchResult(item.problem));
 }
 
-export async function fetchLeetCodeQuestion(slug: string) {
-	const slugKey = slug.toLowerCase();
-	const metaCacheKey = `leetcode:question:v1:${slugKey}`;
-	const cached = await cacheGetJson<{
-		title: string;
-		difficulty: string;
-		tags: string[];
-	}>(metaCacheKey);
-	if (cached) {
-		return cached;
-	}
+const fetchLeetCodeQuestionEffect = Effect.fn("LeetCode.fetchQuestion")(
+	function* (slug: string) {
+		const slugKey = slug.toLowerCase();
+		const metaCacheKey = `leetcode:question:v1:${slugKey}`;
+		const cached = yield* cacheGetJson<QuestionMetadata>(metaCacheKey);
+		if (cached) {
+			return cached;
+		}
 
-	const response = await fetch("https://leetcode.com/graphql", {
-		method: "POST",
-		headers: {
-			"content-type": "application/json",
-			referer: "https://leetcode.com",
-		},
-		body: JSON.stringify({
-			query:
-				"query questionData($titleSlug: String!) { question(titleSlug: $titleSlug) { title difficulty topicTags { name } } }",
-			variables: { titleSlug: slugKey },
-		}),
-	});
+		const response = yield* Effect.tryPromise({
+			try: () =>
+				fetch("https://leetcode.com/graphql", {
+					method: "POST",
+					headers: {
+						"content-type": "application/json",
+						referer: "https://leetcode.com",
+					},
+					body: JSON.stringify({
+						query:
+							"query questionData($titleSlug: String!) { question(titleSlug: $titleSlug) { title difficulty topicTags { name } } }",
+						variables: { titleSlug: slugKey },
+					}),
+				}),
+			catch: (error) =>
+				LeetCodeUnavailableError.make({
+					message: `Failed to fetch LeetCode metadata for "${slugKey}".`,
+					error,
+				}),
+		});
 
-	if (!response.ok) {
-		throw new Error("Failed to fetch problem metadata from LeetCode.");
-	}
+		if (!response.ok) {
+			return yield* LeetCodeUnavailableError.make({
+				message: "Failed to fetch problem metadata from LeetCode.",
+				error: { status: response.status, statusText: response.statusText },
+			});
+		}
 
-	const payload = (await response.json()) as {
-		data?: {
-			question?: {
-				title: string;
-				difficulty: string;
-				topicTags: { name: string }[];
-			} | null;
+		const payload = yield* Effect.tryPromise({
+			try: () =>
+				response.json() as Promise<{
+					data?: {
+						question?: {
+							title: string;
+							difficulty: string;
+							topicTags: { name: string }[];
+						} | null;
+					};
+				}>,
+			catch: (error) =>
+				LeetCodeUnavailableError.make({
+					message: `LeetCode returned invalid JSON for "${slugKey}".`,
+					error,
+				}),
+		});
+
+		const question = payload.data?.question;
+		if (!question) {
+			return yield* LeetCodeInputError.make({
+				message: "Problem not found on LeetCode.",
+			});
+		}
+
+		const result = {
+			title: question.title,
+			difficulty: question.difficulty,
+			tags: question.topicTags.map((tag) => tag.name),
 		};
-	};
 
-	const question = payload.data?.question;
-	if (!question) {
-		throw new Error("Problem not found on LeetCode.");
-	}
+		yield* cachePutJson(metaCacheKey, result, QUESTION_META_TTL_SECONDS);
+		return result;
+	},
+);
 
-	const result = {
-		title: question.title,
-		difficulty: question.difficulty,
-		tags: question.topicTags.map((tag) => tag.name),
-	};
-	await cachePutJson(metaCacheKey, result, QUESTION_META_TTL_SECONDS);
-	return result;
-}
+const searchLeetCodeProblemsEffect = Effect.fn("LeetCode.searchProblems")(
+	function* (queryInput: string) {
+		const index = yield* getProblemsetIndex();
+		const fromUrlSlug = tryExtractLeetCodeSlug(queryInput);
 
-export async function searchLeetCodeProblemsImpl(queryInput: string): Promise<{
-	results: SearchResult[];
-	meta: SearchExecutionMeta;
-}> {
-	const index = await getProblemsetIndex();
-	const fromUrlSlug = tryExtractLeetCodeSlug(queryInput);
-	if (fromUrlSlug) {
-		const fromIndex = index.find((problem) => problem.slug === fromUrlSlug);
-		if (fromIndex) {
-			const results = [toSearchResult(fromIndex)] satisfies SearchResult[];
+		if (fromUrlSlug) {
+			const fromIndex = index.find((problem) => problem.slug === fromUrlSlug);
+			if (fromIndex) {
+				const results = [toSearchResult(fromIndex)] satisfies SearchResult[];
+				return {
+					results,
+					meta: {
+						path: "url_slug" as const,
+						cache_hit: true,
+						upstream_status_code: null,
+						result_count: results.length,
+					},
+				};
+			}
+
+			const question = yield* fetchLeetCodeQuestionEffect(fromUrlSlug);
+			const results = [
+				{
+					title: question.title,
+					slug: fromUrlSlug,
+					difficulty: question.difficulty,
+					url: `https://leetcode.com/problems/${fromUrlSlug}/`,
+				},
+			] satisfies SearchResult[];
 			return {
 				results,
 				meta: {
-					path: "url_slug",
-					cache_hit: true,
+					path: "url_slug" as const,
+					cache_hit: false,
 					upstream_status_code: null,
 					result_count: results.length,
 				},
 			};
 		}
 
-		const question = await fetchLeetCodeQuestion(fromUrlSlug);
-		const results = [
-			{
-				title: question.title,
-				slug: fromUrlSlug,
-				difficulty: question.difficulty,
-				url: `https://leetcode.com/problems/${fromUrlSlug}/`,
-			},
-		] satisfies SearchResult[];
+		const ranked = rankResults(queryInput, index);
 		return {
-			results,
+			results: ranked,
 			meta: {
-				path: "url_slug",
+				path: "kv_index" as const,
 				cache_hit: false,
 				upstream_status_code: null,
-				result_count: results.length,
+				result_count: ranked.length,
 			},
 		};
-	}
+	},
+);
 
-	const ranked = rankResults(queryInput, index);
-	return {
-		results: ranked,
-		meta: {
-			path: "kv_index",
-			cache_hit: false,
-			upstream_status_code: null,
-			result_count: ranked.length,
-		},
-	};
-}
+export class LeetCodeGateway extends Context.Tag("@/lib/LeetCodeGateway")<
+	LeetCodeGateway,
+	{
+		readonly fetchQuestion: (
+			slug: string,
+		) => Effect.Effect<QuestionMetadata, LeetCodeError>;
+		readonly searchProblems: (queryInput: string) => Effect.Effect<
+			{
+				results: SearchResult[];
+				meta: SearchExecutionMeta;
+			},
+			LeetCodeError
+		>;
+	}
+>() {}
+
+export const leetCodeGatewayLayer = Layer.sync(LeetCodeGateway, () =>
+	LeetCodeGateway.of({
+		fetchQuestion: fetchLeetCodeQuestionEffect,
+		searchProblems: searchLeetCodeProblemsEffect,
+	}),
+);

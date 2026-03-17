@@ -12,7 +12,7 @@
     "test": "vitest run",
     "format": "biome format",
     "lint": "biome lint",
-    "check": "biome check",
+    "check": "biome check --write",
     "deploy": "bun run build && wrangler deploy",
     "cf:types": "wrangler types",
     "auth:generate": "bunx --bun @better-auth/cli@latest generate --config src/lib/auth.ts --output src/db/auth.schema.ts -y",

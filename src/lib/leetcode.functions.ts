@@ -1,20 +1,17 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
+import { Effect } from "effect";
 import { z } from "zod";
-import { searchLeetCodeProblemsImpl } from "@/lib/leetcode.server";
+import {
+	logBackendError,
+	logBackendInfo,
+	runBackendEffect,
+} from "@/backend/runtime";
+import { LeetCodeGateway, leetCodeGatewayLayer } from "@/lib/leetcode.server";
 
 const searchInput = z.object({
 	query: z.string().trim().min(1).max(300),
 });
-
-const logger = {
-	info: (event: Record<string, unknown>) => {
-		console.info(JSON.stringify(event));
-	},
-	error: (event: Record<string, unknown>) => {
-		console.error(JSON.stringify(event));
-	},
-};
 
 export const searchLeetCodeProblems = createServerFn({ method: "POST" })
 	.inputValidator((data) => searchInput.parse(data))
@@ -40,7 +37,11 @@ export const searchLeetCodeProblems = createServerFn({ method: "POST" })
 		};
 
 		try {
-			const execution = await searchLeetCodeProblemsImpl(data.query);
+			const execution = await runBackendEffect(
+				Effect.flatMap(LeetCodeGateway, (gateway) =>
+					gateway.searchProblems(data.query),
+				).pipe(Effect.provide(leetCodeGatewayLayer)),
+			);
 			wideEvent.outcome = "success";
 			wideEvent.status_code = 200;
 			wideEvent.search_path = execution.meta.path;
@@ -59,10 +60,10 @@ export const searchLeetCodeProblems = createServerFn({ method: "POST" })
 			throw error;
 		} finally {
 			wideEvent.duration_ms = Date.now() - startedAt;
-			if (wideEvent.outcome === "error") {
-				logger.error(wideEvent);
-			} else {
-				logger.info(wideEvent);
-			}
+			await runBackendEffect(
+				wideEvent.outcome === "error"
+					? logBackendError("leetcode.search", wideEvent)
+					: logBackendInfo("leetcode.search", wideEvent),
+			);
 		}
 	});
