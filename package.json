@@ -27,7 +27,9 @@
     "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
     "db:push": "drizzle-kit push",
     "db:pull": "drizzle-kit pull",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "typecheck": "tsc --noEmit",
+    "prepare": "effect-language-service patch"
   },
   "dependencies": {
     "@apollo/client": "^4.0.0",
@@ -58,6 +60,7 @@
     "date-fns": "^4.1.0",
     "drizzle-kit": "^0.31.8",
     "drizzle-orm": "^0.45.0",
+    "effect": "^3.20.0",
     "embla-carousel-react": "^8.6.0",
     "graphql": "^16.10.0",
     "input-otp": "^1.4.2",
@@ -85,6 +88,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.2.4",
+    "@effect/language-service": "^0.80.0",
     "@react-grab/mcp": "^0.1.18",
     "@tanstack/devtools-vite": "^0.3.11",
     "@testing-library/dom": "^10.4.0",
