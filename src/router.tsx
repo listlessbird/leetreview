@@ -1,8 +1,7 @@
 import { createRouter as createTanStackRouter } from "@tanstack/react-router";
 import { RouteErrorBoundary } from "./components/route-error-boundary";
-import { routeTree } from "./routeTree.gen";
-
 import { getContext } from "./integrations/tanstack-query/root-provider";
+import { routeTree } from "./routeTree.gen";
 
 export function getRouter() {
 	const router = createTanStackRouter({

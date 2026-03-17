@@ -1,9 +1,8 @@
 import { Link } from "@tanstack/react-router";
-
-import BetterAuthHeader from "../integrations/better-auth/header-user.tsx";
+import { Home, Menu, X } from "lucide-react";
 
 import { useState } from "react";
-import { Home, Menu, X } from "lucide-react";
+import BetterAuthHeader from "../integrations/better-auth/header-user.tsx";
 
 export default function Header() {
 	const [isOpen, setIsOpen] = useState(false);

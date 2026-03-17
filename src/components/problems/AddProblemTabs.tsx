@@ -1,13 +1,7 @@
 import { useForm } from "@tanstack/react-form";
 import { useMutation } from "@tanstack/react-query";
+import { Blocks, type LucideIcon, Plus, Search, X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import {
-	Blocks,
-	Plus,
-	Search,
-	X,
-	type LucideIcon,
-} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { SiLeetcode } from "react-icons/si";
 import { Button } from "@/components/ui/button";
@@ -190,7 +184,7 @@ export function AddProblemTabs({
 	const [systemDesignError, setSystemDesignError] = useState<string | null>(
 		null,
 	);
-	const shouldReduceMotion = useReducedMotion();
+	const shouldReduceMotion = useReducedMotion() ?? false;
 
 	const searchTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 	const searchGenerationRef = useRef(0);
@@ -474,7 +468,9 @@ export function AddProblemTabs({
 											name={field.name}
 											value={field.state.value}
 											onBlur={field.handleBlur}
-											onChange={(event) => field.handleChange(event.target.value)}
+											onChange={(event) =>
+												field.handleChange(event.target.value)
+											}
 											placeholder="Design a rate limiter"
 											className={cn(FIELD_CLASS_NAME, "rounded-none")}
 										/>
@@ -507,7 +503,10 @@ export function AddProblemTabs({
 											>
 												<SelectTrigger
 													id={`${field.name}-trigger`}
-													className={cn(FIELD_CLASS_NAME, "w-full rounded-none")}
+													className={cn(
+														FIELD_CLASS_NAME,
+														"w-full rounded-none",
+													)}
 												>
 													<SelectValue />
 												</SelectTrigger>
@@ -535,7 +534,9 @@ export function AddProblemTabs({
 												name={field.name}
 												value={field.state.value}
 												onBlur={field.handleBlur}
-												onChange={(event) => field.handleChange(event.target.value)}
+												onChange={(event) =>
+													field.handleChange(event.target.value)
+												}
 												placeholder="api design, caching"
 												className={cn(FIELD_CLASS_NAME, "rounded-none")}
 											/>
@@ -605,7 +606,10 @@ export function AddProblemTabs({
 																			subField.handleChange(event.target.value)
 																		}
 																		placeholder="https://..."
-																		className={cn(FIELD_CLASS_NAME, "rounded-none")}
+																		className={cn(
+																			FIELD_CLASS_NAME,
+																			"rounded-none",
+																		)}
 																	/>
 																	{subField.state.meta.errors[0] != null ? (
 																		<p className="text-sm text-red-200">
@@ -636,7 +640,10 @@ export function AddProblemTabs({
 																			subField.handleChange(event.target.value)
 																		}
 																		placeholder="Optional"
-																		className={cn(FIELD_CLASS_NAME, "rounded-none")}
+																		className={cn(
+																			FIELD_CLASS_NAME,
+																			"rounded-none",
+																		)}
 																	/>
 																</div>
 															)}

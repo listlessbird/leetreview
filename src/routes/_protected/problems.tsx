@@ -11,13 +11,13 @@ import {
 import { Blocks, Search } from "lucide-react";
 import * as React from "react";
 import { SiLeetcode } from "react-icons/si";
-import { DataTable } from "@/components/data-table/data-table";
-import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import {
 	DIFFICULTY_RANK,
 	DueDateCell,
 	TagsCell,
 } from "@/components/data-table/cells";
+import { DataTable } from "@/components/data-table/data-table";
+import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { RouteErrorBoundary } from "@/components/route-error-boundary";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -100,7 +100,9 @@ function ProblemsPage() {
 						variant="outline"
 						className="border-white/15 bg-transparent text-[11px] text-white/70"
 					>
-						{row.original.type === PROBLEM_TYPES.SYSTEM_DESIGN ? "System Design" : "LeetCode"}
+						{row.original.type === PROBLEM_TYPES.SYSTEM_DESIGN
+							? "System Design"
+							: "LeetCode"}
 					</Badge>
 				),
 			},

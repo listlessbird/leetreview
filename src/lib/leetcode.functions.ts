@@ -2,11 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getRequest } from "@tanstack/react-start/server";
 import { Effect } from "effect";
 import { z } from "zod";
-import {
-	logBackendError,
-	logBackendInfo,
-	runBackendEffect,
-} from "@/backend/runtime";
+import { runBackendEffect } from "@/backend/runtime";
 import { LeetCodeGateway, leetCodeGatewayLayer } from "@/lib/leetcode.server";
 
 const searchInput = z.object({
@@ -62,8 +58,12 @@ export const searchLeetCodeProblems = createServerFn({ method: "POST" })
 			wideEvent.duration_ms = Date.now() - startedAt;
 			await runBackendEffect(
 				wideEvent.outcome === "error"
-					? logBackendError("leetcode.search", wideEvent)
-					: logBackendInfo("leetcode.search", wideEvent),
+					? Effect.logError("leetcode.search").pipe(
+							Effect.annotateLogs(wideEvent),
+						)
+					: Effect.logInfo("leetcode.search").pipe(
+							Effect.annotateLogs(wideEvent),
+						),
 			);
 		}
 	});

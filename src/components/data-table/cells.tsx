@@ -30,7 +30,10 @@ function formatUtcFallback(dueUnix: number) {
 export function DueDateCell({
 	dueUnix,
 	nowMs,
-}: { dueUnix: number; nowMs: number }) {
+}: {
+	dueUnix: number;
+	nowMs: number;
+}) {
 	return (
 		<ClientOnly fallback={formatUtcFallback(dueUnix)}>
 			<LocalDueDate dueUnix={dueUnix} nowMs={nowMs} />
@@ -38,10 +41,7 @@ export function DueDateCell({
 	);
 }
 
-function LocalDueDate({
-	dueUnix,
-	nowMs,
-}: { dueUnix: number; nowMs: number }) {
+function LocalDueDate({ dueUnix, nowMs }: { dueUnix: number; nowMs: number }) {
 	const dueDate = React.useMemo(() => new Date(dueUnix * 1000), [dueUnix]);
 	const relative = React.useMemo(
 		() => formatDueRelative(dueDate, new Date(nowMs)),

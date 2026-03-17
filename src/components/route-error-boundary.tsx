@@ -1,7 +1,7 @@
 import {
 	ErrorComponent,
-	Link,
 	type ErrorComponentProps,
+	Link,
 } from "@tanstack/react-router";
 
 type RouteErrorBoundaryProps = ErrorComponentProps & {

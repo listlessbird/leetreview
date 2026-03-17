@@ -8,8 +8,8 @@ import {
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import { useEffect } from "react";
-import type { TRPCRouter } from "@/integrations/trpc/router";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import type { TRPCRouter } from "@/integrations/trpc/router";
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 import TanStackQueryProvider from "../integrations/tanstack-query/root-provider";
 import appCss from "../styles.css?url";

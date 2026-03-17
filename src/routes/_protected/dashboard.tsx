@@ -1,8 +1,4 @@
-import {
-	createFileRoute,
-	Link,
-	useRouter,
-} from "@tanstack/react-router";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import {
 	type ColumnDef,
 	getCoreRowModel,
@@ -16,13 +12,13 @@ import { Blocks, Search } from "lucide-react";
 import * as React from "react";
 import { SiLeetcode } from "react-icons/si";
 import { AddProblemDialog } from "@/components/dashboard/AddProblemDialog";
-import { DataTable } from "@/components/data-table/data-table";
-import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import {
 	DIFFICULTY_RANK,
 	DueDateCell,
 	TagsCell,
 } from "@/components/data-table/cells";
+import { DataTable } from "@/components/data-table/data-table";
+import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { RouteErrorBoundary } from "@/components/route-error-boundary";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -73,10 +69,7 @@ function DashboardPage() {
 	const nowMs = useAdaptiveNow(filteredDueCards.map((card) => card.due));
 	const nowMsRef = React.useRef(nowMs);
 	nowMsRef.current = nowMs;
-	const handleAdded = React.useCallback(
-		() => router.invalidate(),
-		[router],
-	);
+	const handleAdded = React.useCallback(() => router.invalidate(), [router]);
 	const columns = React.useMemo<ColumnDef<(typeof dueCards)[number]>[]>(
 		() => [
 			{
@@ -102,7 +95,9 @@ function DashboardPage() {
 						variant="outline"
 						className="border-white/15 bg-transparent text-[11px] text-white/70"
 					>
-						{row.original.type === PROBLEM_TYPES.SYSTEM_DESIGN ? "System Design" : "LeetCode"}
+						{row.original.type === PROBLEM_TYPES.SYSTEM_DESIGN
+							? "System Design"
+							: "LeetCode"}
 					</Badge>
 				),
 			},
