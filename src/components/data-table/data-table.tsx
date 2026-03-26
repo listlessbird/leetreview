@@ -30,7 +30,7 @@ export function DataTable<TData>({
 	return (
 		<div
 			className={cn(
-				"data-table-root flex w-full flex-col gap-2.5 overflow-auto",
+				"data-table-root flex w-full flex-col gap-2.5",
 				className,
 			)}
 			{...props}

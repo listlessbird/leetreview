@@ -178,8 +178,8 @@ function DashboardPage() {
 	});
 
 	return (
-		<div className="min-h-screen bg-[#07070e] p-8 font-berkeley text-[#ededf5]">
-			<div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
+		<div className="min-h-screen bg-[#07070e] p-4 font-berkeley text-[#ededf5] sm:p-8">
+			<div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
 				<header className="flex flex-wrap items-center justify-between gap-3">
 					<h1 className="text-2xl font-bold tracking-tight">
 						Today's Due Reviews
@@ -201,8 +201,8 @@ function DashboardPage() {
 					</div>
 				) : (
 					<>
-						<div className="flex items-center justify-between gap-3">
-							<div className="relative w-full max-w-sm">
+						<div className="flex flex-wrap items-center justify-between gap-3">
+							<div className="relative w-full max-w-sm min-w-0">
 								<Search className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-2.5 size-4 text-white/45" />
 								<Input
 									value={search}
@@ -222,7 +222,7 @@ function DashboardPage() {
 						<DataTable
 							table={table}
 							showSelectionSummary={false}
-							className="[&_.data-table-shell]:border-white/10 [&_.data-table-shell]:bg-white/5 [&_[data-slot=table]]:min-w-[940px] [&_[data-slot=table-body]_tr]:border-white/10 [&_[data-slot=table-cell]]:p-3 [&_[data-slot=table-cell]:nth-child(2)]:w-12 [&_[data-slot=table-cell]:nth-child(2)]:py-2 [&_[data-slot=table-head]:nth-child(2)]:w-12 [&_[data-slot=table-head]:nth-child(2)]:py-2 [&_[data-slot=table-head]]:p-3 [&_[data-slot=table-head]]:text-xs [&_[data-slot=table-head]]:tracking-wide [&_[data-slot=table-head]]:uppercase [&_[data-slot=table-head]]:text-white/60 [&_[data-slot=table-header]_tr]:border-white/10"
+							className="[&_.data-table-shell]:border-white/10 [&_.data-table-shell]:bg-white/5 [&_[data-slot=table]]:min-w-[820px] [&_[data-slot=table-body]_tr]:border-white/10 [&_[data-slot=table-cell]]:p-3 [&_[data-slot=table-cell]:nth-child(2)]:w-12 [&_[data-slot=table-cell]:nth-child(2)]:py-2 [&_[data-slot=table-head]:nth-child(2)]:w-12 [&_[data-slot=table-head]:nth-child(2)]:py-2 [&_[data-slot=table-head]]:p-3 [&_[data-slot=table-head]]:text-xs [&_[data-slot=table-head]]:tracking-wide [&_[data-slot=table-head]]:uppercase [&_[data-slot=table-head]]:text-white/60 [&_[data-slot=table-header]_tr]:border-white/10"
 						/>
 					</>
 				)}

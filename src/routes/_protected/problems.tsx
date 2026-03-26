@@ -178,9 +178,9 @@ function ProblemsPage() {
 	});
 
 	return (
-		<div className="min-h-screen bg-[#07070e] p-8 font-berkeley text-[#ededf5]">
-			<div className="mx-auto flex w-full max-w-6xl flex-col gap-4">
-				<div className="flex items-center justify-between gap-3">
+		<div className="min-h-screen bg-[#07070e] p-4 font-berkeley text-[#ededf5] sm:p-8">
+			<div className="mx-auto flex w-full max-w-7xl flex-col gap-4">
+				<div className="flex flex-wrap items-center justify-between gap-3">
 					<h1 className="text-2xl font-bold tracking-tight">
 						Tracked Problems
 					</h1>
@@ -191,8 +191,8 @@ function ProblemsPage() {
 						Back to dashboard
 					</Link>
 				</div>
-				<div className="flex items-center justify-between gap-3">
-					<div className="relative w-full max-w-sm">
+				<div className="flex flex-wrap items-center justify-between gap-3">
+					<div className="relative w-full max-w-sm min-w-0">
 						<Search className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-2.5 size-4 text-white/45" />
 						<Input
 							value={search}
