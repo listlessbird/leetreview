@@ -1,7 +1,5 @@
 import {
 	type ColumnDef,
-	type PaginationState,
-	type SortingState,
 	getCoreRowModel,
 	getPaginationRowModel,
 	getSortedRowModel,
@@ -20,6 +18,7 @@ import { AddProblemDialog } from "@/components/dashboard/AddProblemDialog";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { useAdaptiveNow } from "@/hooks/use-adaptive-now";
+import { useTableUrlState } from "@/hooks/use-table-url-state";
 import { formatDueExact, formatDueRelative } from "@/lib/due-date";
 import { RouteErrorBoundary } from "@/components/route-error-boundary";
 import { BadgeOverflow } from "@/components/ui/badge-overflow";
@@ -44,18 +43,25 @@ export const Route = createFileRoute("/_protected/dashboard")({
 	component: DashboardPage,
 });
 
+const DASHBOARD_COLUMN_IDS = ["title", "difficulty", "tags", "due"];
+
 function DashboardPage() {
 	const router = useRouter();
 	const dueCards = Route.useLoaderData();
-	const [search, setSearch] = React.useState("");
-	const deferredSearch = React.useDeferredValue(search.trim().toLowerCase());
-	const [sorting, setSorting] = React.useState<SortingState>([
-		{ id: "difficulty", desc: true },
-		{ id: "due", desc: false },
-	]);
-	const [pagination, setPagination] = React.useState<PaginationState>({
-		pageIndex: 0,
-		pageSize: 10,
+	const {
+		search,
+		setSearch,
+		deferredSearch,
+		sorting,
+		onSortingChange,
+		pagination,
+		onPaginationChange,
+	} = useTableUrlState({
+		columnIds: DASHBOARD_COLUMN_IDS,
+		defaultSorting: [
+			{ id: "difficulty", desc: true },
+			{ id: "due", desc: false },
+		],
 	});
 	const searchableRows = React.useMemo(
 		() =>
@@ -68,16 +74,11 @@ function DashboardPage() {
 	);
 	const filteredDueCards = React.useMemo(() => {
 		if (!deferredSearch) return dueCards;
-		return searchableRows
-			.filter(({ searchText }) => searchText.includes(deferredSearch))
-			.map(({ card }) => card);
+		return searchableRows.flatMap(({ card, searchText }) =>
+			searchText.includes(deferredSearch) ? [card] : [],
+		);
 	}, [deferredSearch, dueCards, searchableRows]);
 	const nowMs = useAdaptiveNow(filteredDueCards.map((card) => card.due));
-	React.useEffect(() => {
-		setPagination((prev) =>
-			prev.pageIndex === 0 ? prev : { ...prev, pageIndex: 0 },
-		);
-	}, [deferredSearch]);
 	const columns = React.useMemo<ColumnDef<(typeof dueCards)[number]>[]>(
 		() => [
 			{
@@ -158,7 +159,7 @@ function DashboardPage() {
 				),
 			},
 		],
-		[],
+		[nowMs],
 	);
 	const table = useReactTable({
 		data: filteredDueCards,
@@ -169,8 +170,8 @@ function DashboardPage() {
 		},
 		getRowId: (row) => row.cardId,
 		enableRowSelection: false,
-		onSortingChange: setSorting,
-		onPaginationChange: setPagination,
+		onSortingChange,
+		onPaginationChange,
 		getCoreRowModel: getCoreRowModel(),
 		getSortedRowModel: getSortedRowModel(),
 		getPaginationRowModel: getPaginationRowModel(),
@@ -207,7 +208,7 @@ function DashboardPage() {
 									value={search}
 									onChange={(event) => setSearch(event.target.value)}
 									placeholder="Search title, difficulty, tags..."
-									className="h-9 border-white/20 bg-white/[0.03] pl-8 text-[#ededf5] placeholder:text-white/45 focus-visible:border-white/30 focus-visible:ring-white/20"
+									className="h-9 border-white/20 bg-white/[0.03] pl-8 text-[#ededf5] placeholder:text-white/45 focus-visible:border-white/30 focus-visible:ring-white/20 selection:bg-white/20 selection:text-white"
 									aria-label="Search due reviews"
 								/>
 							</div>

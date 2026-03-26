@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import type { TRPCOptionsProxy } from "@trpc/tanstack-react-query";
+import { NuqsAdapter } from "nuqs/adapters/tanstack-router";
 import { useEffect } from "react";
 import type { TRPCRouter } from "@/integrations/trpc/router";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -73,6 +74,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 				<HeadContent />
 			</head>
 			<body>
+				<NuqsAdapter>
 				<TanStackQueryProvider>
 					<TooltipProvider>
 						{children}
@@ -90,6 +92,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 						/>
 					</TooltipProvider>
 				</TanStackQueryProvider>
+				</NuqsAdapter>
 				<Scripts />
 			</body>
 		</html>
