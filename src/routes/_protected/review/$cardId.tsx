@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, useRouter } from "@tanstack/react-router";
 import { useState } from "react";
 import { RouteErrorBoundary } from "@/components/route-error-boundary";
 import { getReviewCard, submitReview } from "@/lib/review.functions";
@@ -18,6 +18,7 @@ export const Route = createFileRoute("/_protected/review/$cardId")({
 
 function ReviewCardPage() {
 	const navigate = useNavigate();
+	const router = useRouter();
 	const card = Route.useLoaderData();
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -27,7 +28,11 @@ function ReviewCardPage() {
 		setIsSubmitting(true);
 		try {
 			await submitReview({ data: { cardId: card.cardId, rating } });
-			await navigate({ to: "/dashboard" });
+			if (window.history.length > 1) {
+				router.history.back();
+			} else {
+				await navigate({ to: "/dashboard" });
+			}
 		} catch (submitError) {
 			setError(
 				submitError instanceof Error
