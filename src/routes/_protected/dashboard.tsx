@@ -11,6 +11,7 @@ import {
 	Link,
 	useRouter,
 } from "@tanstack/react-router";
+import { createStandardSchemaV1, parseAsInteger, parseAsString } from "nuqs";
 import { Search } from "lucide-react";
 import * as React from "react";
 import { SiLeetcode } from "react-icons/si";
@@ -32,6 +33,10 @@ import {
 import { getDueCards } from "@/lib/review.functions";
 
 export const Route = createFileRoute("/_protected/dashboard")({
+	validateSearch: createStandardSchemaV1(
+		{ q: parseAsString, sort: parseAsString, page: parseAsInteger, perPage: parseAsInteger },
+		{ partialOutput: true },
+	),
 	loader: async () => getDueCards(),
 	errorComponent: ({ error, reset }) => (
 		<RouteErrorBoundary
