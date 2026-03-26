@@ -6,7 +6,7 @@ import {
 	useReactTable,
 } from "@tanstack/react-table";
 import { ClientOnly, Link, createFileRoute } from "@tanstack/react-router";
-import { createStandardSchemaV1, parseAsInteger, parseAsString } from "nuqs";
+import { tableSearchSchema } from "@/lib/table-search-params";
 import { Search } from "lucide-react";
 import * as React from "react";
 import { SiLeetcode } from "react-icons/si";
@@ -27,10 +27,7 @@ import {
 import { listProblems } from "@/lib/review.functions";
 
 export const Route = createFileRoute("/_protected/problems")({
-	validateSearch: createStandardSchemaV1(
-		{ q: parseAsString, sort: parseAsString, page: parseAsInteger, perPage: parseAsInteger },
-		{ partialOutput: true },
-	),
+	validateSearch: tableSearchSchema,
 	loader: async () => listProblems(),
 	errorComponent: ({ error, reset }) => (
 		<RouteErrorBoundary
@@ -42,10 +39,10 @@ export const Route = createFileRoute("/_protected/problems")({
 	component: ProblemsPage,
 });
 
-const PROBLEMS_COLUMN_IDS = ["title", "difficulty", "tags", "due", "reps"];
-
 function ProblemsPage() {
 	const problems = Route.useLoaderData();
+	const urlSearch = Route.useSearch();
+	const navigate = Route.useNavigate();
 	const {
 		search,
 		setSearch,
@@ -55,7 +52,10 @@ function ProblemsPage() {
 		pagination,
 		onPaginationChange,
 	} = useTableUrlState({
-		columnIds: PROBLEMS_COLUMN_IDS,
+		search: urlSearch,
+		onSearchChange: (updater) => {
+			void navigate({ to: ".", search: updater, replace: true });
+		},
 		defaultSorting: [
 			{ id: "difficulty", desc: true },
 			{ id: "title", desc: false },
@@ -192,6 +192,7 @@ function ProblemsPage() {
 					<Link
 						className="text-sm underline decoration-white/30 underline-offset-4"
 						to="/dashboard"
+						search={{}}
 					>
 						Back to dashboard
 					</Link>

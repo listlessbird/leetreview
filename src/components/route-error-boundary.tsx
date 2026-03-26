@@ -33,6 +33,7 @@ export function RouteErrorBoundary({
 					</button>
 					<Link
 						to="/dashboard"
+						search={{}}
 						className="rounded border border-white/20 px-3 py-2 text-sm hover:bg-white/10"
 					>
 						Go to dashboard

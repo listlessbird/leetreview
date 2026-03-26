@@ -1,61 +1,49 @@
-import type { ColumnSort, PaginationState, SortingState, Updater } from "@tanstack/react-table";
-import { parseAsInteger, parseAsString, useQueryState } from "nuqs";
+import type { PaginationState, SortingState, Updater } from "@tanstack/react-table";
 import * as React from "react";
-import { getSortingStateParser } from "@/lib/parsers";
+import type { TableSearch } from "@/lib/table-search-params";
 
 interface UseTableUrlStateOptions {
-	columnIds: string[];
+	search: TableSearch;
+	onSearchChange: (updater: (prev: TableSearch) => TableSearch) => void;
 	defaultSorting?: SortingState;
 	defaultPageSize?: number;
 }
 
-type AnyData = Record<string, unknown>;
+export function useTableUrlState({
+	search,
+	onSearchChange,
+	defaultSorting = [],
+	defaultPageSize = 10,
+}: UseTableUrlStateOptions) {
+	const deferredSearch = React.useDeferredValue(search.q.trim().toLowerCase());
 
-export function useTableUrlState(options: UseTableUrlStateOptions) {
-	const {
-		columnIds,
-		defaultSorting = [],
-		defaultPageSize = 10,
-	} = options;
+	const sorting: SortingState =
+		search.sort.length > 0 ? (search.sort as SortingState) : defaultSorting;
 
-	const columnIdSet = React.useMemo(() => new Set(columnIds), [columnIds]);
-
-	const [search, setSearchRaw] = useQueryState(
-		"q",
-		parseAsString.withOptions({ history: "replace", throttleMs: 50, clearOnDefault: true }).withDefault(""),
-	);
-	const deferredSearch = React.useDeferredValue(search.trim().toLowerCase());
-
-	const [sorting, setSortingRaw] = useQueryState(
-		"sort",
-		getSortingStateParser<AnyData>(columnIdSet)
-			.withOptions({ history: "replace", clearOnDefault: true })
-			.withDefault(defaultSorting as ColumnSort[]),
+	const setSearch = React.useCallback(
+		(value: string) => {
+			onSearchChange((prev) => ({ ...prev, q: value, page: 1 }));
+		},
+		[onSearchChange],
 	);
 
 	const onSortingChange = React.useCallback(
 		(updaterOrValue: Updater<SortingState>) => {
 			const next =
 				typeof updaterOrValue === "function"
-					? updaterOrValue(sorting as SortingState)
+					? updaterOrValue(sorting)
 					: updaterOrValue;
-			void setSortingRaw(next as ColumnSort[]);
+			onSearchChange((prev) => ({ ...prev, sort: next, page: 1 }));
 		},
-		[sorting, setSortingRaw],
-	);
-
-	const [page, setPage] = useQueryState(
-		"page",
-		parseAsInteger.withOptions({ history: "replace", clearOnDefault: true }).withDefault(1),
-	);
-	const [perPage, setPerPage] = useQueryState(
-		"perPage",
-		parseAsInteger.withOptions({ history: "replace", clearOnDefault: true }).withDefault(defaultPageSize),
+		[sorting, onSearchChange],
 	);
 
 	const pagination: PaginationState = React.useMemo(
-		() => ({ pageIndex: page - 1, pageSize: perPage }),
-		[page, perPage],
+		() => ({
+			pageIndex: search.page - 1,
+			pageSize: search.perPage > 0 ? search.perPage : defaultPageSize,
+		}),
+		[search.page, search.perPage, defaultPageSize],
 	);
 
 	const onPaginationChange = React.useCallback(
@@ -64,25 +52,20 @@ export function useTableUrlState(options: UseTableUrlStateOptions) {
 				typeof updaterOrValue === "function"
 					? updaterOrValue(pagination)
 					: updaterOrValue;
-			void setPage(next.pageIndex + 1);
-			void setPerPage(next.pageSize);
+			onSearchChange((prev) => ({
+				...prev,
+				page: next.pageIndex + 1,
+				perPage: next.pageSize,
+			}));
 		},
-		[pagination, setPage, setPerPage],
-	);
-
-	const setSearch = React.useCallback(
-		(value: string) => {
-			void setSearchRaw(value);
-			void setPage(1);
-		},
-		[setSearchRaw, setPage],
+		[pagination, onSearchChange],
 	);
 
 	return {
-		search,
+		search: search.q,
 		setSearch,
 		deferredSearch,
-		sorting: sorting as SortingState,
+		sorting,
 		onSortingChange,
 		pagination,
 		onPaginationChange,

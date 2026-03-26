@@ -31,7 +31,7 @@ function ReviewCardPage() {
 			if (window.history.length > 1) {
 				router.history.back();
 			} else {
-				await navigate({ to: "/dashboard" });
+				await navigate({ to: "/dashboard", search: {} });
 			}
 		} catch (submitError) {
 			setError(

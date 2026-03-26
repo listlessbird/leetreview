@@ -11,7 +11,7 @@ import {
 	Link,
 	useRouter,
 } from "@tanstack/react-router";
-import { createStandardSchemaV1, parseAsInteger, parseAsString } from "nuqs";
+import { tableSearchSchema } from "@/lib/table-search-params";
 import { Search } from "lucide-react";
 import * as React from "react";
 import { SiLeetcode } from "react-icons/si";
@@ -33,10 +33,7 @@ import {
 import { getDueCards } from "@/lib/review.functions";
 
 export const Route = createFileRoute("/_protected/dashboard")({
-	validateSearch: createStandardSchemaV1(
-		{ q: parseAsString, sort: parseAsString, page: parseAsInteger, perPage: parseAsInteger },
-		{ partialOutput: true },
-	),
+	validateSearch: tableSearchSchema,
 	loader: async () => getDueCards(),
 	errorComponent: ({ error, reset }) => (
 		<RouteErrorBoundary
@@ -48,11 +45,11 @@ export const Route = createFileRoute("/_protected/dashboard")({
 	component: DashboardPage,
 });
 
-const DASHBOARD_COLUMN_IDS = ["title", "difficulty", "tags", "due"];
-
 function DashboardPage() {
 	const router = useRouter();
 	const dueCards = Route.useLoaderData();
+	const urlSearch = Route.useSearch();
+	const navigate = Route.useNavigate();
 	const {
 		search,
 		setSearch,
@@ -62,7 +59,10 @@ function DashboardPage() {
 		pagination,
 		onPaginationChange,
 	} = useTableUrlState({
-		columnIds: DASHBOARD_COLUMN_IDS,
+		search: urlSearch,
+		onSearchChange: (updater) => {
+			void navigate({ to: ".", search: updater, replace: true });
+		},
 		defaultSorting: [
 			{ id: "difficulty", desc: true },
 			{ id: "due", desc: false },
@@ -194,6 +194,7 @@ function DashboardPage() {
 						<Link
 							className="underline decoration-white/30 underline-offset-4"
 							to="/problems"
+							search={{}}
 						>
 							All problems
 						</Link>
