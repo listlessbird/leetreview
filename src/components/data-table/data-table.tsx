@@ -30,13 +30,13 @@ export function DataTable<TData>({
 	return (
 		<div
 			className={cn(
-				"data-table-root flex w-full flex-col gap-2.5",
+				"data-table-root flex w-full flex-col gap-2.5 overflow-auto",
 				className,
 			)}
 			{...props}
 		>
 			{children}
-			<div className="data-table-shell animate-in fade-in-0 overflow-clip rounded-md border duration-200 ease-out motion-reduce:animate-none">
+			<div className="data-table-shell animate-in fade-in-0 overflow-hidden rounded-md border duration-200 ease-out motion-reduce:animate-none">
 				<Table className="[&_tbody_tr[data-slot=table-row]:hover]:!bg-transparent [&_thead_tr[data-slot=table-row]:hover]:!bg-transparent">
 					<TableHeader>
 						{table.getHeaderGroups().map((headerGroup) => (

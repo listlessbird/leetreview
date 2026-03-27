@@ -7,7 +7,7 @@ export const Route = createFileRoute("/")({
 	beforeLoad: async () => {
 		const session = await getSession();
 		if (session) {
-			throw redirect({ to: "/dashboard", search: {} });
+			throw redirect({ to: "/dashboard" });
 		}
 	},
 	component: LandingPage,

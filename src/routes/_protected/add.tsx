@@ -18,7 +18,7 @@ function AddProblemPage() {
 		setIsSubmitting(true);
 		try {
 			await addProblemFromUrl({ data: { url } });
-			await navigate({ to: "/dashboard", search: {} });
+			await navigate({ to: "/dashboard" });
 		} catch (submissionError) {
 			setError(
 				submissionError instanceof Error

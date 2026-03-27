@@ -1,19 +1,19 @@
 import {
 	type ColumnDef,
+	type PaginationState,
+	type SortingState,
 	getCoreRowModel,
 	getPaginationRowModel,
 	getSortedRowModel,
 	useReactTable,
 } from "@tanstack/react-table";
 import { ClientOnly, Link, createFileRoute } from "@tanstack/react-router";
-import { tableSearchSchema } from "@/lib/table-search-params";
 import { Search } from "lucide-react";
 import * as React from "react";
 import { SiLeetcode } from "react-icons/si";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { useAdaptiveNow } from "@/hooks/use-adaptive-now";
-import { useTableUrlState } from "@/hooks/use-table-url-state";
 import { formatDueExact, formatDueRelative } from "@/lib/due-date";
 import { RouteErrorBoundary } from "@/components/route-error-boundary";
 import { BadgeOverflow } from "@/components/ui/badge-overflow";
@@ -27,7 +27,6 @@ import {
 import { listProblems } from "@/lib/review.functions";
 
 export const Route = createFileRoute("/_protected/problems")({
-	validateSearch: tableSearchSchema,
 	loader: async () => listProblems(),
 	errorComponent: ({ error, reset }) => (
 		<RouteErrorBoundary
@@ -41,25 +40,15 @@ export const Route = createFileRoute("/_protected/problems")({
 
 function ProblemsPage() {
 	const problems = Route.useLoaderData();
-	const urlSearch = Route.useSearch();
-	const navigate = Route.useNavigate();
-	const {
-		search,
-		setSearch,
-		deferredSearch,
-		sorting,
-		onSortingChange,
-		pagination,
-		onPaginationChange,
-	} = useTableUrlState({
-		search: urlSearch,
-		onSearchChange: (updater) => {
-			void navigate({ to: ".", search: updater, replace: true });
-		},
-		defaultSorting: [
-			{ id: "difficulty", desc: true },
-			{ id: "title", desc: false },
-		],
+	const [search, setSearch] = React.useState("");
+	const deferredSearch = React.useDeferredValue(search.trim().toLowerCase());
+	const [sorting, setSorting] = React.useState<SortingState>([
+		{ id: "difficulty", desc: true },
+		{ id: "title", desc: false },
+	]);
+	const [pagination, setPagination] = React.useState<PaginationState>({
+		pageIndex: 0,
+		pageSize: 10,
 	});
 	const searchableRows = React.useMemo(
 		() =>
@@ -72,11 +61,16 @@ function ProblemsPage() {
 	);
 	const filteredProblems = React.useMemo(() => {
 		if (!deferredSearch) return problems;
-		return searchableRows.flatMap(({ problem, searchText }) =>
-			searchText.includes(deferredSearch) ? [problem] : [],
-		);
+		return searchableRows
+			.filter(({ searchText }) => searchText.includes(deferredSearch))
+			.map(({ problem }) => problem);
 	}, [deferredSearch, problems, searchableRows]);
 	const nowMs = useAdaptiveNow(filteredProblems.map((problem) => problem.due));
+	React.useEffect(() => {
+		setPagination((prev) =>
+			prev.pageIndex === 0 ? prev : { ...prev, pageIndex: 0 },
+		);
+	}, [deferredSearch]);
 	const columns = React.useMemo<ColumnDef<(typeof problems)[number]>[]>(
 		() => [
 			{
@@ -164,7 +158,7 @@ function ProblemsPage() {
 				),
 			},
 		],
-		[nowMs],
+		[],
 	);
 	const table = useReactTable({
 		data: filteredProblems,
@@ -175,36 +169,35 @@ function ProblemsPage() {
 		},
 		getRowId: (row) => row.problemId,
 		enableRowSelection: false,
-		onSortingChange,
-		onPaginationChange,
+		onSortingChange: setSorting,
+		onPaginationChange: setPagination,
 		getCoreRowModel: getCoreRowModel(),
 		getSortedRowModel: getSortedRowModel(),
 		getPaginationRowModel: getPaginationRowModel(),
 	});
 
 	return (
-		<div className="min-h-screen bg-[#07070e] p-4 font-berkeley text-[#ededf5] sm:p-8">
-			<div className="mx-auto flex w-full max-w-7xl flex-col gap-4">
-				<div className="flex flex-wrap items-center justify-between gap-3">
+		<div className="min-h-screen bg-[#07070e] p-8 font-berkeley text-[#ededf5]">
+			<div className="mx-auto flex w-full max-w-6xl flex-col gap-4">
+				<div className="flex items-center justify-between gap-3">
 					<h1 className="text-2xl font-bold tracking-tight">
 						Tracked Problems
 					</h1>
 					<Link
 						className="text-sm underline decoration-white/30 underline-offset-4"
 						to="/dashboard"
-						search={{}}
 					>
 						Back to dashboard
 					</Link>
 				</div>
-				<div className="flex flex-wrap items-center justify-between gap-3">
-					<div className="relative w-full max-w-sm min-w-0">
+				<div className="flex items-center justify-between gap-3">
+					<div className="relative w-full max-w-sm">
 						<Search className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-2.5 size-4 text-white/45" />
 						<Input
 							value={search}
 							onChange={(event) => setSearch(event.target.value)}
 							placeholder="Search title, slug, difficulty, tags..."
-							className="h-9 border-white/20 bg-white/[0.03] pl-8 text-[#ededf5] placeholder:text-white/45 focus-visible:border-white/30 focus-visible:ring-white/20 selection:bg-white/20 selection:text-white"
+							className="h-9 border-white/20 bg-white/[0.03] pl-8 text-[#ededf5] placeholder:text-white/45 focus-visible:border-white/30 focus-visible:ring-white/20"
 							aria-label="Search tracked problems"
 						/>
 					</div>
@@ -218,7 +211,7 @@ function ProblemsPage() {
 				<DataTable
 					table={table}
 					showSelectionSummary={false}
-					className="[&_.data-table-shell]:border-white/10 [&_.data-table-shell]:bg-white/5 [&_[data-slot=table]]:min-w-[820px] [&_[data-slot=table-body]_tr]:border-white/10 [&_[data-slot=table-cell]]:p-3 [&_[data-slot=table-cell]:nth-child(2)]:w-12 [&_[data-slot=table-cell]:nth-child(2)]:py-2 [&_[data-slot=table-head]:nth-child(2)]:w-12 [&_[data-slot=table-head]:nth-child(2)]:py-2 [&_[data-slot=table-head]]:bg-[#0a0a12] [&_[data-slot=table-head]]:p-3 [&_[data-slot=table-head]]:text-xs [&_[data-slot=table-head]]:tracking-wide [&_[data-slot=table-head]]:uppercase [&_[data-slot=table-head]]:text-white/60 [&_[data-slot=table-header]_tr]:border-white/10"
+					className="[&_.data-table-shell]:border-white/10 [&_.data-table-shell]:bg-white/5 [&_[data-slot=table]]:min-w-[820px] [&_[data-slot=table-body]_tr]:border-white/10 [&_[data-slot=table-cell]]:p-3 [&_[data-slot=table-cell]:nth-child(2)]:w-12 [&_[data-slot=table-cell]:nth-child(2)]:py-2 [&_[data-slot=table-head]:nth-child(2)]:w-12 [&_[data-slot=table-head]:nth-child(2)]:py-2 [&_[data-slot=table-head]]:p-3 [&_[data-slot=table-head]]:text-xs [&_[data-slot=table-head]]:tracking-wide [&_[data-slot=table-head]]:uppercase [&_[data-slot=table-head]]:text-white/60 [&_[data-slot=table-header]_tr]:border-white/10"
 				/>
 			</div>
 		</div>
