@@ -178,7 +178,7 @@ function ProblemsPage() {
 
 	return (
 		<div className="min-h-screen bg-[#07070e] p-8 font-berkeley text-[#ededf5]">
-			<div className="mx-auto flex w-full max-w-6xl flex-col gap-4">
+			<div className="mx-auto flex w-full max-w-7xl flex-col gap-4">
 				<div className="flex items-center justify-between gap-3">
 					<h1 className="text-2xl font-bold tracking-tight">
 						Tracked Problems
