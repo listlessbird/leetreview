@@ -16,6 +16,7 @@ import Link from "next/link";
 import * as React from "react";
 import { SiLeetcode } from "react-icons/si";
 
+import { ReviewRowContent } from "@/components/review/ReviewRowContent";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +39,7 @@ import {
 } from "@/lib/review.functions";
 
 export function ProblemsPage() {
+	const [reviewCardId, setReviewCardId] = React.useState<string | null>(null);
 	const searchInputRef = React.useRef<HTMLInputElement>(null);
 	const [search, setSearch] = React.useState("");
 	const {
@@ -190,16 +192,19 @@ export function ProblemsPage() {
 				enableSorting: false,
 				header: "Action",
 				cell: ({ row }) => (
-					<Link
-						href={`/review/${row.original.cardId}`}
-						className="transform-gpu rounded border border-white/20 px-2.5 py-1.5 transition-colors duration-150 ease-out hover:bg-white/10 active:scale-[0.98] motion-reduce:transform-none motion-reduce:transition-none"
+					<button
+						type="button"
+						onClick={() => setReviewCardId(
+							reviewCardId === row.original.cardId ? null : row.original.cardId
+						)}
+						className="transform-gpu rounded border border-white/20 px-2.5 py-1.5 text-sm transition-colors duration-150 ease-out hover:bg-white/10 active:scale-[0.97] motion-reduce:transform-none motion-reduce:transition-none"
 					>
 						Review
-					</Link>
+					</button>
 				),
 			},
 		],
-		[nowMs],
+		[nowMs, reviewCardId],
 	);
 
 	const table = useReactTable({
@@ -220,7 +225,11 @@ export function ProblemsPage() {
 
 	const pageRows = table
 		.getRowModel()
-		.rows.map((row) => ({ href: `/review/${row.original.cardId}` }));
+		.rows.map((row) => ({
+			onSelect: () => setReviewCardId(
+				reviewCardId === row.original.cardId ? null : row.original.cardId,
+			),
+		}));
 	useRowNavHotkeys(pageRows);
 
 	return (
@@ -278,6 +287,13 @@ export function ProblemsPage() {
 						table={table}
 						showSelectionSummary={false}
 						className="[&_.data-table-shell]:border-white/10 [&_.data-table-shell]:bg-white/5 [&_[data-slot=table]]:min-w-[820px] [&_[data-slot=table-body]_tr]:border-white/10 [&_[data-slot=table-cell]]:p-3 [&_[data-slot=table-cell]:nth-child(2)]:w-12 [&_[data-slot=table-cell]:nth-child(2)]:py-2 [&_[data-slot=table-head]:nth-child(2)]:w-12 [&_[data-slot=table-head]:nth-child(2)]:py-2 [&_[data-slot=table-head]]:p-3 [&_[data-slot=table-head]]:text-xs [&_[data-slot=table-head]]:tracking-wide [&_[data-slot=table-head]]:uppercase [&_[data-slot=table-head]]:text-white/60 [&_[data-slot=table-header]_tr]:border-white/10"
+						isRowExpanded={(row) => reviewCardId === row.original.cardId}
+						renderExpandedRow={(row) => (
+							<ReviewRowContent
+								cardId={row.original.cardId}
+								onClose={() => setReviewCardId(null)}
+							/>
+						)}
 					/>
 				)}
 			</div>

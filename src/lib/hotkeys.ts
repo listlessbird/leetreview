@@ -7,6 +7,11 @@ export const HOTKEYS = {
 	addProblem: "C",
 	/** Focus the search input — Mod resolves to Ctrl on Linux/Windows, Cmd on Mac */
 	searchFocus: "Mod+K",
+	/** Rate the current review — only active while a review row is expanded */
+	rateAgain: "A",
+	rateHard: "H",
+	rateGood: "G",
+	rateEasy: "E",
 } as const;
 
 export type HotkeyId = keyof typeof HOTKEYS;
@@ -15,4 +20,8 @@ export type HotkeyId = keyof typeof HOTKEYS;
 export const HOTKEY_LABELS: Record<HotkeyId, string[]> = {
 	addProblem: ["C"],
 	searchFocus: ["Ctrl", "K"],
+	rateAgain: ["A"],
+	rateHard: ["H"],
+	rateGood: ["G"],
+	rateEasy: ["E"],
 };

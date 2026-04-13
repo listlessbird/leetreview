@@ -1,5 +1,5 @@
-import { flexRender, type Table as TanstackTable } from "@tanstack/react-table";
-import type * as React from "react";
+import { flexRender, type Row, type Table as TanstackTable } from "@tanstack/react-table";
+import * as React from "react";
 
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import {
@@ -17,12 +17,17 @@ interface DataTableProps<TData> extends React.ComponentProps<"div"> {
 	table: TanstackTable<TData>;
 	actionBar?: React.ReactNode;
 	showSelectionSummary?: boolean;
+	/** When true for a row, that row's cells are replaced with renderExpandedRow output. */
+	isRowExpanded?: (row: Row<TData>) => boolean;
+	renderExpandedRow?: (row: Row<TData>, colSpan: number) => React.ReactNode;
 }
 
 export function DataTable<TData>({
 	table,
 	actionBar,
 	showSelectionSummary = true,
+	isRowExpanded,
+	renderExpandedRow,
 	children,
 	className,
 	...props
@@ -62,26 +67,36 @@ export function DataTable<TData>({
 					</TableHeader>
 					<TableBody>
 						{table.getRowModel().rows?.length ? (
-							table.getRowModel().rows.map((row) => (
-								<TableRow
-									key={row.id}
-									data-state={row.getIsSelected() && "selected"}
-								>
-									{row.getVisibleCells().map((cell) => (
-										<TableCell
-											key={cell.id}
-											style={{
-												...getColumnPinningStyle({ column: cell.column }),
-											}}
-										>
-											{flexRender(
-												cell.column.columnDef.cell,
-												cell.getContext(),
-											)}
-										</TableCell>
-									))}
-								</TableRow>
-							))
+							table.getRowModel().rows.map((row) => {
+								const expanded = isRowExpanded?.(row) ?? false;
+								const colSpan = row.getVisibleCells().length;
+								return (
+									<TableRow
+										key={row.id}
+										data-state={row.getIsSelected() && "selected"}
+									>
+										{expanded && renderExpandedRow ? (
+											<TableCell colSpan={colSpan} className="animate-in fade-in-0 p-0 duration-150">
+												{renderExpandedRow(row, colSpan)}
+											</TableCell>
+										) : (
+											row.getVisibleCells().map((cell) => (
+												<TableCell
+													key={cell.id}
+													style={{
+														...getColumnPinningStyle({ column: cell.column }),
+													}}
+												>
+													{flexRender(
+														cell.column.columnDef.cell,
+														cell.getContext(),
+													)}
+												</TableCell>
+											))
+										)}
+									</TableRow>
+								);
+							})
 						) : (
 							<TableRow>
 								<TableCell
