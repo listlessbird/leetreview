@@ -1,42 +1,28 @@
+import "server-only";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { tanstackStartCookies } from "better-auth/tanstack-start";
-import { drizzle } from "drizzle-orm/d1";
-import { env } from "../env";
+import { nextCookies } from "better-auth/next-js";
+
+import { getEnv } from "../env";
+import { getDb } from "../db";
 import { schema } from "../db/schema";
 
-type RequestWithCf = Request & {
-	cf?: IncomingRequestCfProperties;
-};
+let auth: ReturnType<typeof createAuth> | undefined;
 
-type CreateAuthOptions = {
-	d1?: D1Database;
-	cf?: IncomingRequestCfProperties;
-};
-
-export function createAuth(_options?: CreateAuthOptions) {
-	const d1 = _options?.d1;
-	const database = d1
-		? drizzleAdapter(
-				drizzle(d1, {
-					schema,
-				}),
-				{
-					schema,
-					provider: "sqlite",
-					usePlural: true,
-				},
-			)
-		: drizzleAdapter({} as D1Database, {
-				schema,
-				provider: "sqlite",
-				usePlural: true,
-			});
+function createAuth() {
+	const env = getEnv();
 
 	return betterAuth({
 		baseURL: env.BETTER_AUTH_URL,
 		secret: env.BETTER_AUTH_SECRET,
-		database,
+		database: drizzleAdapter(
+			getDb(),
+			{
+				schema,
+				provider: "sqlite",
+				usePlural: true,
+			},
+		),
 		emailAndPassword: {
 			enabled: true,
 		},
@@ -51,20 +37,19 @@ export function createAuth(_options?: CreateAuthOptions) {
 				ipAddressHeaders: ["cf-connecting-ip", "x-real-ip"],
 			},
 		},
-		plugins: [tanstackStartCookies()],
+		plugins: [nextCookies()],
 		trustedOrigins: [env.BETTER_AUTH_URL],
 	});
 }
 
-export const auth = createAuth();
-
-export async function getAuthForRequest(request: Request) {
-	const { env: workerEnv } = await import("cloudflare:workers");
-	const d1 = workerEnv?.DB;
-	if (!d1) {
-		throw new Error(
-			'Missing D1 binding "DB". Add d1_databases.DB in wrangler.jsonc.',
-		);
+export async function getAuth() {
+	if (!auth) {
+		auth = createAuth();
 	}
-	return createAuth({ d1, cf: (request as RequestWithCf).cf });
+
+	return auth;
+}
+
+export async function getAuthForRequest(_request: Request) {
+	return getAuth();
 }
