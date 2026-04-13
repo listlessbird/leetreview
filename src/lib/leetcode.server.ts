@@ -1,4 +1,6 @@
-import "@tanstack/react-start/server-only";
+import "server-only";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 
 export function extractLeetCodeSlug(url: string) {
 	const parsed = new URL(url);
@@ -34,14 +36,32 @@ export type SearchResult = {
 };
 
 export type SearchExecutionMeta = {
-	path: "url_slug" | "kv_index";
+	path: "url_slug" | "local_index";
 	cache_hit: boolean;
 	upstream_status_code: number | null;
 	result_count: number;
 };
 
-const QUESTION_META_TTL_SECONDS = 60 * 60 * 24 * 30;
-const PROBLEMSET_CACHE_KEY = "leetcode:problemset:v1";
+const DEFAULT_PROBLEMSET_CACHE_PATH = path.join(
+	process.cwd(),
+	"data",
+	"leetcode-cache.json",
+);
+
+function getProblemsetCachePath() {
+	const configuredPath = process.env.LEETCODE_CACHE_PATH?.trim();
+
+	if (!configuredPath) {
+		return DEFAULT_PROBLEMSET_CACHE_PATH;
+	}
+
+	return path.resolve(
+		/* turbopackIgnore: true */ process.cwd(),
+		configuredPath,
+	);
+}
+
+const PROBLEMSET_CACHE_PATH = getProblemsetCachePath();
 
 type CachedProblem = {
 	slug: string;
@@ -50,51 +70,39 @@ type CachedProblem = {
 	tags: string[];
 };
 
-async function getLeetCodeCacheBinding() {
-	try {
-		const { env } = await import("cloudflare:workers");
-		const typedEnv = env as unknown as { LEETCODE_CACHE?: KVNamespace };
-		return typedEnv?.LEETCODE_CACHE;
-	} catch {
-		return undefined;
+const questionMetaCache = new Map<
+	string,
+	{
+		title: string;
+		difficulty: string;
+		tags: string[];
 	}
-}
+>();
 
-async function cacheGetJson<T>(key: string): Promise<T | null> {
-	const cache = await getLeetCodeCacheBinding();
-	if (!cache) return null;
-	const raw = await cache.get(key);
-	if (!raw) return null;
+async function loadProblemsetIndex() {
 	try {
-		return JSON.parse(raw) as T;
-	} catch {
-		return null;
-	}
-}
+		const fileContents = await readFile(PROBLEMSET_CACHE_PATH, "utf8");
+		const parsed = JSON.parse(fileContents) as CachedProblem[];
+		if (!Array.isArray(parsed) || parsed.length === 0) {
+			throw new Error("LeetCode cache file is empty.");
+		}
+		return parsed;
+	} catch (error) {
+		if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+			throw new Error(
+				`LeetCode cache file not found at "${PROBLEMSET_CACHE_PATH}". Run "bun run leetcode:cache" first or set LEETCODE_CACHE_PATH.`,
+			);
+		}
 
-async function cachePutJson(
-	key: string,
-	value: unknown,
-	expirationTtl: number,
-): Promise<void> {
-	const cache = await getLeetCodeCacheBinding();
-	if (!cache) return;
-	await cache.put(key, JSON.stringify(value), { expirationTtl });
+		throw error;
+	}
 }
 
 let problemsetIndexPromise: Promise<CachedProblem[]> | null = null;
 
 async function getProblemsetIndex(): Promise<CachedProblem[]> {
 	if (!problemsetIndexPromise) {
-		problemsetIndexPromise = (async () => {
-			const index = await cacheGetJson<CachedProblem[]>(PROBLEMSET_CACHE_KEY);
-			if (!index?.length) {
-				throw new Error(
-					"LeetCode cache is empty. Populate KV key `leetcode:problemset:v1` first.",
-				);
-			}
-			return index;
-		})();
+		problemsetIndexPromise = loadProblemsetIndex();
 	}
 	return problemsetIndexPromise;
 }
@@ -132,7 +140,10 @@ function rankResults(queryInput: string, all: CachedProblem[]): SearchResult[] {
 			return { score, problem };
 		})
 		.filter((item) => item.score > 0)
-		.sort((a, b) => b.score - a.score || a.problem.title.localeCompare(b.problem.title))
+		.sort(
+			(a, b) =>
+				b.score - a.score || a.problem.title.localeCompare(b.problem.title),
+		)
 		.slice(0, 10);
 
 	return scored.map((item) => toSearchResult(item.problem));
@@ -140,12 +151,7 @@ function rankResults(queryInput: string, all: CachedProblem[]): SearchResult[] {
 
 export async function fetchLeetCodeQuestion(slug: string) {
 	const slugKey = slug.toLowerCase();
-	const metaCacheKey = `leetcode:question:v1:${slugKey}`;
-	const cached = await cacheGetJson<{
-		title: string;
-		difficulty: string;
-		tags: string[];
-	}>(metaCacheKey);
+	const cached = questionMetaCache.get(slugKey);
 	if (cached) {
 		return cached;
 	}
@@ -187,7 +193,7 @@ export async function fetchLeetCodeQuestion(slug: string) {
 		difficulty: question.difficulty,
 		tags: question.topicTags.map((tag) => tag.name),
 	};
-	await cachePutJson(metaCacheKey, result, QUESTION_META_TTL_SECONDS);
+	questionMetaCache.set(slugKey, result);
 	return result;
 }
 
@@ -205,7 +211,7 @@ export async function searchLeetCodeProblemsImpl(queryInput: string): Promise<{
 				results,
 				meta: {
 					path: "url_slug",
-					cache_hit: true,
+					cache_hit: questionMetaCache.has(fromUrlSlug),
 					upstream_status_code: null,
 					result_count: results.length,
 				},
@@ -225,7 +231,7 @@ export async function searchLeetCodeProblemsImpl(queryInput: string): Promise<{
 			results,
 			meta: {
 				path: "url_slug",
-				cache_hit: false,
+				cache_hit: questionMetaCache.has(fromUrlSlug),
 				upstream_status_code: null,
 				result_count: results.length,
 			},
@@ -236,7 +242,7 @@ export async function searchLeetCodeProblemsImpl(queryInput: string): Promise<{
 	return {
 		results: ranked,
 		meta: {
-			path: "kv_index",
+			path: "local_index",
 			cache_hit: false,
 			upstream_status_code: null,
 			result_count: ranked.length,

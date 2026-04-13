@@ -1,5 +1,9 @@
-import { useMutation } from "@tanstack/react-query";
+"use client";
+
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { Kbd } from "@/components/ui/kbd";
+import { HOTKEY_LABELS } from "@/lib/hotkeys";
 import {
 	Dialog,
 	DialogClose,
@@ -11,7 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { searchLeetCodeProblems } from "@/lib/leetcode.functions";
-import { addProblemFromUrl } from "@/lib/review.functions";
+import { addProblemFromUrl, reviewQueryKeys } from "@/lib/review.functions";
 
 /* ─── types ───────────────────────────────────── */
 
@@ -66,12 +70,17 @@ function ResultItem({
 
 /* ─── main component ──────────────────────────── */
 
-interface AddProblemDialogProps {
-	onAdded: () => void | Promise<void>;
-}
-
-export function AddProblemDialog({ onAdded }: AddProblemDialogProps) {
-	const [open, setOpen] = useState(false);
+export function AddProblemDialog({
+	open: externalOpen,
+	onOpenChange: externalOnOpenChange,
+}: {
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
+} = {}) {
+	const queryClient = useQueryClient();
+	const [internalOpen, setInternalOpen] = useState(false);
+	const open = externalOpen ?? internalOpen;
+	const setOpen = externalOnOpenChange ?? setInternalOpen;
 	const [searchQuery, setSearchQuery] = useState("");
 	const [isSearching, setIsSearching] = useState(false);
 	const [searchError, setSearchError] = useState<string | null>(null);
@@ -86,7 +95,10 @@ export function AddProblemDialog({ onAdded }: AddProblemDialogProps) {
 			setSearchQuery("");
 			setResults([]);
 			setOpen(false);
-			await onAdded();
+			await Promise.all([
+				queryClient.invalidateQueries({ queryKey: reviewQueryKeys.dueCards }),
+				queryClient.invalidateQueries({ queryKey: reviewQueryKeys.problems }),
+			]);
 		},
 	});
 
@@ -152,7 +164,12 @@ export function AddProblemDialog({ onAdded }: AddProblemDialogProps) {
 				onClick={() => setOpen(true)}
 				className="group relative overflow-hidden rounded border border-indigo-500/30 bg-indigo-500/[0.07] px-3 py-1.5 text-sm text-[#ededf5] transition-all duration-150 ease hover:border-indigo-400/50 hover:bg-indigo-500/15 hover:shadow-[0_0_14px_rgba(99,102,241,0.22)] active:scale-[0.975] active:transition-none"
 			>
-				<span className="relative z-10">+ Add problem</span>
+				<span className="relative z-10 flex items-center gap-2">
+					+ Add problem
+					<Kbd className="border-indigo-400/30 bg-indigo-500/10 text-indigo-300/70 opacity-80">
+						{HOTKEY_LABELS.addProblem[0]}
+					</Kbd>
+				</span>
 				<span className="pointer-events-none absolute inset-0 bg-linear-to-br from-indigo-500/10 to-transparent opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
 			</button>
 

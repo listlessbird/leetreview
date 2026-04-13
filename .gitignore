@@ -1,13 +1,9 @@
 node_modules
 .DS_Store
-dist
-dist-ssr
+.next
 *.local
 .env
-.nitro
-.tanstack
-.wrangler
-.output
-.vinxi
-__unconfig*
 todos.json
+data/leetcode-cache.json
+data/*.sqlite
+data/*.sqlite-*

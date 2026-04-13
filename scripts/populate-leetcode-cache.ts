@@ -1,8 +1,11 @@
 
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
+
 const GRAPHQL_URL = "https://leetcode.com/graphql/";
-const KV_NAMESPACE_ID = "9db51e8c11f8426e96d945128b5e3b92";
-const CACHE_KEY = "leetcode:problemset:v1";
 const PAGE_SIZE = 100;
+const OUTPUT_PATH =
+	process.env.LEETCODE_CACHE_PATH?.trim() || "data/leetcode-cache.json";
 
 const PROBLEMSET_QUERY = `
 	query problemsetQuestionListV2(
@@ -128,39 +131,22 @@ async function fetchAllProblems(): Promise<Question[]> {
 	return questions;
 }
 
-async function writeToKV(data: string) {
-	const tmpPath = "./scripts/leetcode-cache.json";
-	await Bun.write(tmpPath, data);
-	const proc = Bun.spawn(
-		[
-			"bunx",
-			"wrangler",
-			"kv",
-			"key",
-			"put",
-			CACHE_KEY,
-			"--namespace-id",
-			KV_NAMESPACE_ID,
-			"--path",
-			tmpPath,
-		],
-		{ stdout: "inherit", stderr: "inherit" },
-	);
-	const exitCode = await proc.exited;
-	if (exitCode !== 0) {
-		throw new Error(`wrangler kv put exited with code ${exitCode}`);
-	}
+async function main() {
+	const problems = await fetchAllProblems();
+
+	const index = problems.map((q) => ({
+		slug: q.titleSlug,
+		title: q.title,
+		difficulty: q.difficulty,
+		tags: q.topicTags.map((t) => t.name),
+	}));
+
+	await mkdir(path.dirname(OUTPUT_PATH), { recursive: true });
+	await writeFile(OUTPUT_PATH, JSON.stringify(index), "utf8");
+	console.log(`Wrote ${index.length} problems to ${OUTPUT_PATH}`);
 }
 
-const problems = await fetchAllProblems();
-
-const index = problems.map((q) => ({
-	slug: q.titleSlug,
-	title: q.title,
-	difficulty: q.difficulty,
-	tags: q.topicTags.map((t) => t.name),
-}));
-
-console.log(`Writing ${index.length} problems to KV...`);
-await writeToKV(JSON.stringify(index));
-console.log("Done.");
+main().catch((error) => {
+	console.error(error);
+	process.exitCode = 1;
+});
