@@ -104,6 +104,32 @@ type RandomReviewSessionDialogProps = {
 	onSkip: () => void;
 };
 
+function RandomReviewHotkeys({
+	onRate,
+	isSubmitting,
+}: {
+	onRate: (rating: 1 | 2 | 3 | 4) => void;
+	isSubmitting: boolean;
+}) {
+	useHotkey(HOTKEYS.rateAgain, () => { if (!isSubmitting) onRate(1); }, {
+		ignoreInputs: true,
+		meta: { name: "Random review: Again", description: "Submit Again rating" },
+	});
+	useHotkey(HOTKEYS.rateHard, () => { if (!isSubmitting) onRate(2); }, {
+		ignoreInputs: true,
+		meta: { name: "Random review: Hard", description: "Submit Hard rating" },
+	});
+	useHotkey(HOTKEYS.rateGood, () => { if (!isSubmitting) onRate(3); }, {
+		ignoreInputs: true,
+		meta: { name: "Random review: Good", description: "Submit Good rating" },
+	});
+	useHotkey(HOTKEYS.rateEasy, () => { if (!isSubmitting) onRate(4); }, {
+		ignoreInputs: true,
+		meta: { name: "Random review: Easy", description: "Submit Easy rating" },
+	});
+	return null;
+}
+
 export function RandomReviewSessionDialog({
 	session,
 	isSubmitting,
@@ -113,50 +139,6 @@ export function RandomReviewSessionDialog({
 	onSkip,
 }: RandomReviewSessionDialogProps) {
 	const canSubmit = Boolean(session) && !isSubmitting;
-
-	useHotkey(
-		HOTKEYS.rateAgain,
-		() => {
-			if (canSubmit) onRate(1);
-		},
-		{
-			ignoreInputs: true,
-			meta: {
-				name: "Random review: Again",
-				description: "Submit Again rating",
-			},
-		},
-	);
-	useHotkey(
-		HOTKEYS.rateHard,
-		() => {
-			if (canSubmit) onRate(2);
-		},
-		{
-			ignoreInputs: true,
-			meta: { name: "Random review: Hard", description: "Submit Hard rating" },
-		},
-	);
-	useHotkey(
-		HOTKEYS.rateGood,
-		() => {
-			if (canSubmit) onRate(3);
-		},
-		{
-			ignoreInputs: true,
-			meta: { name: "Random review: Good", description: "Submit Good rating" },
-		},
-	);
-	useHotkey(
-		HOTKEYS.rateEasy,
-		() => {
-			if (canSubmit) onRate(4);
-		},
-		{
-			ignoreInputs: true,
-			meta: { name: "Random review: Easy", description: "Submit Easy rating" },
-		},
-	);
 
 	return (
 		<Dialog open={Boolean(session)} onOpenChange={() => undefined}>
@@ -168,6 +150,7 @@ export function RandomReviewSessionDialog({
 			>
 				{session ? (
 					<>
+						<RandomReviewHotkeys onRate={onRate} isSubmitting={isSubmitting} />
 						<DialogHeader>
 							<div className="flex items-start justify-between gap-4">
 								<div className="min-w-0">
