@@ -1,5 +1,6 @@
 "use client";
 
+import { useHotkey } from "@tanstack/react-hotkeys";
 import { useQuery } from "@tanstack/react-query";
 import {
 	type ColumnDef,
@@ -10,16 +11,19 @@ import {
 	type SortingState,
 	useReactTable,
 } from "@tanstack/react-table";
-import { Search } from "lucide-react";
+import { Search, Shuffle } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
 import { SiLeetcode } from "react-icons/si";
 
-import { useHotkey } from "@tanstack/react-hotkeys";
-
 import { AddProblemDialog } from "@/components/dashboard/AddProblemDialog";
+import {
+	PlatformChoiceDialog,
+	RandomReviewSessionDialog,
+} from "@/components/dashboard/RandomReviewDialogs";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
+import { ReviewRowContent } from "@/components/review/ReviewRowContent";
 import { Badge } from "@/components/ui/badge";
 import { BadgeOverflow } from "@/components/ui/badge-overflow";
 import { Input } from "@/components/ui/input";
@@ -29,8 +33,8 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ReviewRowContent } from "@/components/review/ReviewRowContent";
 import { useAdaptiveNow } from "@/hooks/use-adaptive-now";
+import { useRandomReviewSession } from "@/hooks/use-random-review-session";
 import { useRowNavHotkeys } from "@/hooks/use-row-hotkeys";
 import { formatDueExact, formatDueRelative } from "@/lib/due-date";
 import { HOTKEY_LABELS, HOTKEYS } from "@/lib/hotkeys";
@@ -92,10 +96,6 @@ export function DashboardPage() {
 	}
 
 	// ── Hotkeys ────────────────────────────────────────────────────────────
-	useHotkey(HOTKEYS.addProblem, () => setAddDialogOpen(true), {
-		ignoreInputs: true,
-		meta: { name: "Add problem", description: "Open the add problem dialog" },
-	});
 	useHotkey(
 		HOTKEYS.searchFocus,
 		() => {
@@ -119,7 +119,9 @@ export function DashboardPage() {
 					const num =
 						table.getRowModel().rows.findIndex((r) => r.id === row.id) + 1;
 					return (
-						<Kbd className="border border-white/15 bg-white/8 text-[10px] text-white/45">{num}</Kbd>
+						<Kbd className="border border-white/15 bg-white/8 text-[10px] text-white/45">
+							{num}
+						</Kbd>
 					);
 				},
 				meta: { label: "#" },
@@ -160,7 +162,9 @@ export function DashboardPage() {
 								aria-label={`Open ${row.original.title} on NeetCode`}
 								className="inline-flex size-8 shrink-0 items-center justify-center rounded border border-white/15 text-white/70 transition-colors duration-150 ease-out hover:border-white/30 hover:bg-white/10 hover:text-[#10b981] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30"
 							>
-								<span className="text-[10px] font-bold tracking-tighter leading-none mt-[1px]">NC</span>
+								<span className="text-[10px] font-bold tracking-tighter leading-none mt-[1px]">
+									NC
+								</span>
 							</a>
 						)}
 					</div>
@@ -207,9 +211,13 @@ export function DashboardPage() {
 				cell: ({ row }) => (
 					<button
 						type="button"
-						onClick={() => setReviewCardId(
-							reviewCardId === row.original.cardId ? null : row.original.cardId
-						)}
+						onClick={() =>
+							setReviewCardId(
+								reviewCardId === row.original.cardId
+									? null
+									: row.original.cardId,
+							)
+						}
 						className="transform-gpu rounded border border-white/20 px-3 py-2 text-sm transition-colors duration-150 ease-out hover:bg-white/10 active:scale-[0.97] motion-reduce:transform-none motion-reduce:transition-none"
 					>
 						Review
@@ -235,28 +243,59 @@ export function DashboardPage() {
 		getSortedRowModel: getSortedRowModel(),
 		getPaginationRowModel: getPaginationRowModel(),
 	});
+	const handleRandomReviewSessionStart = React.useCallback(() => {
+		setReviewCardId(null);
+	}, []);
+	const randomReview = useRandomReviewSession({
+		cards: filteredDueCards,
+		isLoading,
+		isBlocked: addDialogOpen,
+		hasSearch: Boolean(deferredSearch),
+		onSessionStart: handleRandomReviewSessionStart,
+	});
+	useHotkey(
+		HOTKEYS.addProblem,
+		() => {
+			if (!randomReview.isActive) setAddDialogOpen(true);
+		},
+		{
+			ignoreInputs: true,
+			meta: { name: "Add problem", description: "Open the add problem dialog" },
+		},
+	);
 
-	const pageRows = table
-		.getRowModel()
-		.rows.map((row) => ({
-			onSelect: () => setReviewCardId(
+	const pageRows = table.getRowModel().rows.map((row) => ({
+		onSelect: () =>
+			setReviewCardId(
 				reviewCardId === row.original.cardId ? null : row.original.cardId,
 			),
-		}));
-	useRowNavHotkeys(pageRows);
+	}));
+	useRowNavHotkeys(pageRows, !randomReview.isActive);
 
 	return (
 		<div className="min-h-screen bg-[#07070e] p-8 font-berkeley text-[#ededf5]">
 			<div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
 				<header className="flex flex-wrap items-center justify-between gap-3">
-					<h1 className="text-2xl font-bold tracking-tight">
-						Today's Due Reviews
-					</h1>
+					<h1 className="text-2xl font-bold tracking-tight">Review Queue</h1>
 					<div className="flex items-center gap-3 text-sm">
+						<button
+							type="button"
+							onClick={randomReview.start}
+							disabled={
+								isLoading || randomReview.isActive || dueCards.length === 0
+							}
+							className="group inline-flex transform-gpu items-center gap-2 rounded border border-emerald-500/30 bg-emerald-500/[0.07] px-3 py-1.5 text-sm text-[#ededf5] transition-all duration-150 ease-out hover:border-emerald-400/50 hover:bg-emerald-500/15 active:scale-[0.975] disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transform-none"
+						>
+							<Shuffle className="size-4 text-emerald-300/80" />
+							Random
+							<Kbd className="border-emerald-400/30 bg-emerald-500/10 text-emerald-300/70 opacity-80">
+								{HOTKEY_LABELS.randomReview[0]}
+							</Kbd>
+						</button>
 						<AddProblemDialog
-						open={addDialogOpen}
-						onOpenChange={setAddDialogOpen}
-					/>
+							open={addDialogOpen}
+							onOpenChange={setAddDialogOpen}
+						/>
 						<Link
 							className="underline decoration-white/30 underline-offset-4"
 							href="/problems"
@@ -266,19 +305,25 @@ export function DashboardPage() {
 					</div>
 				</header>
 
+				{randomReview.notice ? (
+					<p className="rounded border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-white/65">
+						{randomReview.notice}
+					</p>
+				) : null}
+
 				{isLoading ? (
 					<div className="rounded border border-white/10 bg-white/5 p-5 text-sm text-white/70">
-						Loading due reviews...
+						Loading review queue...
 					</div>
 				) : error ? (
 					<div className="rounded border border-red-500/20 bg-red-500/6 p-5 text-sm text-red-200">
 						{error instanceof Error
 							? error.message
-							: "Could not load due reviews."}
+							: "Could not load review queue."}
 					</div>
 				) : dueCards.length === 0 ? (
 					<div className="rounded border border-white/10 bg-white/5 p-5 text-sm text-white/70">
-						No problems are due right now.
+						No reviews are ready right now.
 					</div>
 				) : (
 					<>
@@ -295,7 +340,10 @@ export function DashboardPage() {
 								/>
 								<KbdGroup className="-translate-y-1/2 pointer-events-none absolute top-1/2 right-2">
 									{HOTKEY_LABELS.searchFocus.map((key) => (
-										<Kbd key={key} className="border border-white/15 bg-white/8 text-[10px] text-white/50">
+										<Kbd
+											key={key}
+											className="border border-white/15 bg-white/8 text-[10px] text-white/50"
+										>
 											{key}
 										</Kbd>
 									))}
@@ -323,6 +371,21 @@ export function DashboardPage() {
 					</>
 				)}
 			</div>
+			<PlatformChoiceDialog
+				problem={randomReview.platformChoice.problem}
+				remember={randomReview.platformChoice.remember}
+				onRememberChange={randomReview.platformChoice.setRemember}
+				onChoose={randomReview.platformChoice.choose}
+				onCancel={randomReview.platformChoice.cancel}
+			/>
+			<RandomReviewSessionDialog
+				session={randomReview.sessionDialog.session}
+				isSubmitting={randomReview.sessionDialog.isSubmitting}
+				error={randomReview.sessionDialog.error}
+				onRate={(rating) => void randomReview.sessionDialog.rate(rating)}
+				onOpenAgain={randomReview.sessionDialog.openAgain}
+				onSkip={randomReview.sessionDialog.skip}
+			/>
 		</div>
 	);
 }
