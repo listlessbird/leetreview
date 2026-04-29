@@ -3,6 +3,7 @@
 import { HotkeysProvider } from "@tanstack/react-hotkeys";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import dynamic from "next/dynamic";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { useState } from "react";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -27,7 +28,9 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
 	return (
 		<HotkeysProvider>
 			<QueryClientProvider client={queryClient}>
-				<TooltipProvider>{children}</TooltipProvider>
+				<NuqsAdapter>
+					<TooltipProvider>{children}</TooltipProvider>
+				</NuqsAdapter>
 			</QueryClientProvider>
 			{HotkeysDevtools && <HotkeysDevtools />}
 		</HotkeysProvider>

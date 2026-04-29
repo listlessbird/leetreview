@@ -2,6 +2,7 @@
 
 import { useHotkey } from "@tanstack/react-hotkeys";
 import { useQueryClient } from "@tanstack/react-query";
+import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import * as React from "react";
 import { HOTKEYS } from "@/lib/hotkeys";
 import {
@@ -27,6 +28,8 @@ type UseRandomReviewSessionOptions = {
 	onSessionStart: () => void;
 };
 
+const REVIEW_PLATFORMS = ["leetcode", "neetcode"] as const;
+
 export function useRandomReviewSession({
 	cards,
 	isLoading,
@@ -35,10 +38,14 @@ export function useRandomReviewSession({
 	onSessionStart,
 }: UseRandomReviewSessionOptions) {
 	const queryClient = useQueryClient();
-	const [session, setSession] =
-		React.useState<RandomReviewSession<DueCard> | null>(null);
-	const [platformChoiceProblem, setPlatformChoiceProblem] =
-		React.useState<DueCard | null>(null);
+	const [{ random: randomCardId, platform: platformParam }, setRandomState] =
+		useQueryStates(
+			{
+				random: parseAsString,
+				platform: parseAsStringLiteral(REVIEW_PLATFORMS),
+			},
+			{ history: "replace" },
+		);
 	const [rememberPlatformChoice, setRememberPlatformChoice] =
 		React.useState(false);
 	const [platformPreference, setPlatformPreference] =
@@ -49,6 +56,48 @@ export function useRandomReviewSession({
 	const [notice, setNotice] = React.useState<string | null>(null);
 	const [error, setError] = React.useState<string | null>(null);
 	const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+	const randomProblem = React.useMemo(() => {
+		if (!randomCardId) return null;
+		return cards.find((card) => card.cardId === randomCardId) ?? null;
+	}, [cards, randomCardId]);
+
+	const { session, platformChoiceProblem } = React.useMemo<{
+		session: RandomReviewSession<DueCard> | null;
+		platformChoiceProblem: DueCard | null;
+	}>(() => {
+		if (!randomProblem) return { session: null, platformChoiceProblem: null };
+
+		if (platformParam) {
+			return {
+				session: {
+					problem: randomProblem,
+					platform: platformParam,
+					url: getPlatformUrl(randomProblem, platformParam),
+				},
+				platformChoiceProblem: null,
+			};
+		}
+
+		const resolution = resolveRandomReviewPlatform({
+			problem: randomProblem,
+			preference: platformPreference,
+		});
+
+		if (resolution.type === "choose") {
+			return { session: null, platformChoiceProblem: randomProblem };
+		}
+
+		return {
+			session: {
+				problem: randomProblem,
+				platform: resolution.platform,
+				url: resolution.url,
+			},
+			platformChoiceProblem: null,
+		};
+	}, [platformParam, platformPreference, randomProblem]);
+
 	const isActive = Boolean(session) || Boolean(platformChoiceProblem);
 
 	React.useEffect(() => {
@@ -59,6 +108,12 @@ export function useRandomReviewSession({
 			setPlatformPreference(saved);
 		}
 	}, []);
+
+	React.useEffect(() => {
+		if (isLoading || !randomCardId) return;
+		if (cards.some((card) => card.cardId === randomCardId)) return;
+		void setRandomState(null);
+	}, [cards, isLoading, randomCardId, setRandomState]);
 
 	const openUrl = React.useCallback((url: string) => {
 		const opened = window.open(url, "_blank", "noopener,noreferrer");
@@ -87,18 +142,6 @@ export function useRandomReviewSession({
 		[],
 	);
 
-	const beginSession = React.useCallback(
-		(nextSession: RandomReviewSession<DueCard>) => {
-			onSessionStart();
-			setPlatformChoiceProblem(null);
-			setRememberPlatformChoice(false);
-			setError(null);
-			setSession(nextSession);
-			openUrl(nextSession.url);
-		},
-		[onSessionStart, openUrl],
-	);
-
 	const startProblem = React.useCallback(
 		(problem: DueCard) => {
 			const resolution = resolveRandomReviewPlatform({
@@ -108,21 +151,20 @@ export function useRandomReviewSession({
 
 			onSessionStart();
 			setError(null);
+			setRememberPlatformChoice(false);
 
 			if (resolution.type === "choose") {
-				setSession(null);
-				setPlatformChoiceProblem(problem);
-				setRememberPlatformChoice(false);
+				void setRandomState({ random: problem.cardId, platform: null });
 				return;
 			}
 
-			beginSession({
-				problem,
+			void setRandomState({
+				random: problem.cardId,
 				platform: resolution.platform,
-				url: resolution.url,
 			});
+			openUrl(resolution.url);
 		},
-		[beginSession, onSessionStart, platformPreference],
+		[onSessionStart, openUrl, platformPreference, setRandomState],
 	);
 
 	const chooseProblem = React.useCallback(
@@ -165,24 +207,22 @@ export function useRandomReviewSession({
 				setSavedPlatformPreference(platform);
 			}
 
-			beginSession({
-				problem: platformChoiceProblem,
-				platform,
-				url: getPlatformUrl(platformChoiceProblem, platform),
-			});
+			void setRandomState({ platform });
+			openUrl(getPlatformUrl(platformChoiceProblem, platform));
 		},
 		[
-			beginSession,
+			openUrl,
 			platformChoiceProblem,
 			rememberPlatformChoice,
+			setRandomState,
 			setSavedPlatformPreference,
 		],
 	);
 
 	const cancelPlatformChoice = React.useCallback(() => {
-		setPlatformChoiceProblem(null);
+		void setRandomState(null);
 		setRememberPlatformChoice(false);
-	}, []);
+	}, [setRandomState]);
 
 	const rate = React.useCallback(
 		async (rating: 1 | 2 | 3 | 4) => {
@@ -201,7 +241,7 @@ export function useRandomReviewSession({
 						queryKey: reviewQueryKeys.reviewCard(session.problem.cardId),
 					}),
 				]);
-				setSession(null);
+				await setRandomState(null);
 				setNotice(null);
 			} catch (submitError) {
 				setError(
@@ -213,7 +253,7 @@ export function useRandomReviewSession({
 				setIsSubmitting(false);
 			}
 		},
-		[isSubmitting, queryClient, session],
+		[isSubmitting, queryClient, session, setRandomState],
 	);
 
 	const openAgain = React.useCallback(() => {
@@ -230,13 +270,13 @@ export function useRandomReviewSession({
 
 		const nextProblem = chooseProblem(nextSkippedCardIds);
 		if (!nextProblem) {
-			setSession(null);
+			void setRandomState(null);
 			setNotice("No reviews are ready right now.");
 			return;
 		}
 
 		startProblem(nextProblem);
-	}, [chooseProblem, session, skippedCardIds, startProblem]);
+	}, [chooseProblem, session, setRandomState, skippedCardIds, startProblem]);
 
 	useHotkey(HOTKEYS.randomReview, start, {
 		ignoreInputs: true,
