@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Kbd } from "@/components/ui/kbd";
 import { HOTKEY_LABELS, HOTKEYS } from "@/lib/hotkeys";
+import { cn } from "@/lib/utils";
 import type {
 	RandomReviewSession as RandomReviewSessionModel,
 	ReviewPlatform,
@@ -196,6 +197,7 @@ export function RandomReviewSessionDialog({
 						<div className="grid gap-2 sm:grid-cols-4">
 							<RatingButton
 								label="Again"
+								hint="couldn't derive without major hint"
 								hotkey={HOTKEY_LABELS.rateAgain[0]}
 								disabled={!canSubmit}
 								onClick={() => onRate(1)}
@@ -203,6 +205,7 @@ export function RandomReviewSessionDialog({
 							/>
 							<RatingButton
 								label="Hard"
+								hint="solved, but slow or shaky"
 								hotkey={HOTKEY_LABELS.rateHard[0]}
 								disabled={!canSubmit}
 								onClick={() => onRate(2)}
@@ -210,6 +213,7 @@ export function RandomReviewSessionDialog({
 							/>
 							<RatingButton
 								label="Good"
+								hint="solved cleanly after thinking"
 								hotkey={HOTKEY_LABELS.rateGood[0]}
 								disabled={!canSubmit}
 								onClick={() => onRate(3)}
@@ -217,6 +221,7 @@ export function RandomReviewSessionDialog({
 							/>
 							<RatingButton
 								label="Easy"
+								hint="recognized pattern, can code it"
 								hotkey={HOTKEY_LABELS.rateEasy[0]}
 								disabled={!canSubmit}
 								onClick={() => onRate(4)}
@@ -298,12 +303,14 @@ function PlatformBadge({ platform }: { platform: ReviewPlatform }) {
 
 function RatingButton({
 	label,
+	hint,
 	hotkey,
 	disabled,
 	onClick,
 	className,
 }: {
 	label: string;
+	hint: string;
 	hotkey: string;
 	disabled: boolean;
 	onClick: () => void;
@@ -314,12 +321,20 @@ function RatingButton({
 			type="button"
 			disabled={disabled}
 			onClick={onClick}
-			className={`inline-flex transform-gpu items-center justify-center gap-2 rounded border border-white/20 px-3 py-2 text-sm text-white/75 transition-colors duration-150 ease-out active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transform-none motion-reduce:transition-none ${className}`}
+			className={cn(
+				"flex w-full transform-gpu flex-col items-center justify-center gap-1 rounded border border-white/20 px-3 py-2.5 text-sm text-white/75 transition-colors duration-150 ease-out active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transform-none motion-reduce:transition-none",
+				className,
+			)}
 		>
-			{label}
-			<Kbd className="border border-white/15 bg-white/8 text-[10px] text-white/45">
-				{hotkey}
-			</Kbd>
+			<div className="flex items-center gap-2">
+				{label}
+				<Kbd className="border border-white/15 bg-white/8 text-[10px] text-white/45">
+					{hotkey}
+				</Kbd>
+			</div>
+			<span className="text-center text-[10px] font-normal leading-tight text-white/35">
+				{hint}
+			</span>
 		</button>
 	);
 }

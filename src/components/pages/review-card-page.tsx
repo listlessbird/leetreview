@@ -106,33 +106,45 @@ export function ReviewCardPage({ cardId }: { cardId: string }) {
 						type="button"
 						onClick={() => void handleRate(1)}
 						disabled={isSubmitting}
-						className="rounded border border-white/20 px-3 py-2 text-sm hover:bg-white/10 disabled:opacity-60"
+						className="flex flex-col items-center gap-1 rounded border border-white/20 px-3 py-2.5 text-sm hover:bg-white/10 disabled:opacity-60"
 					>
 						Again
+						<span className="text-[10px] font-normal text-white/35">
+							couldn&apos;t derive without major hint
+						</span>
 					</button>
 					<button
 						type="button"
 						onClick={() => void handleRate(2)}
 						disabled={isSubmitting}
-						className="rounded border border-white/20 px-3 py-2 text-sm hover:bg-white/10 disabled:opacity-60"
+						className="flex flex-col items-center gap-1 rounded border border-white/20 px-3 py-2.5 text-sm hover:bg-white/10 disabled:opacity-60"
 					>
 						Hard
+						<span className="text-[10px] font-normal text-white/35">
+							solved, but slow or shaky
+						</span>
 					</button>
 					<button
 						type="button"
 						onClick={() => void handleRate(3)}
 						disabled={isSubmitting}
-						className="rounded border border-white/20 px-3 py-2 text-sm hover:bg-white/10 disabled:opacity-60"
+						className="flex flex-col items-center gap-1 rounded border border-white/20 px-3 py-2.5 text-sm hover:bg-white/10 disabled:opacity-60"
 					>
 						Good
+						<span className="text-[10px] font-normal text-white/35">
+							solved cleanly after thinking
+						</span>
 					</button>
 					<button
 						type="button"
 						onClick={() => void handleRate(4)}
 						disabled={isSubmitting}
-						className="rounded border border-white/20 px-3 py-2 text-sm hover:bg-white/10 disabled:opacity-60"
+						className="flex flex-col items-center gap-1 rounded border border-white/20 px-3 py-2.5 text-sm hover:bg-white/10 disabled:opacity-60"
 					>
 						Easy
+						<span className="text-[10px] font-normal text-white/35">
+							recognized pattern, can code it
+						</span>
 					</button>
 				</div>
 				{error ? <p className="mt-3 text-sm text-red-300">{error}</p> : null}
