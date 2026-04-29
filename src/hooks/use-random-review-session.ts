@@ -72,6 +72,21 @@ export function useRandomReviewSession({
 		setNotice(null);
 	}, []);
 
+	const setSavedPlatformPreference = React.useCallback(
+		(preference: ReviewPlatform | null) => {
+			if (preference) {
+				window.localStorage.setItem(
+					RANDOM_REVIEW_PLATFORM_PREFERENCE_KEY,
+					preference,
+				);
+			} else {
+				window.localStorage.removeItem(RANDOM_REVIEW_PLATFORM_PREFERENCE_KEY);
+			}
+			setPlatformPreference(preference);
+		},
+		[],
+	);
+
 	const beginSession = React.useCallback(
 		(nextSession: RandomReviewSession<DueCard>) => {
 			onSessionStart();
@@ -147,11 +162,7 @@ export function useRandomReviewSession({
 			if (!platformChoiceProblem) return;
 
 			if (rememberPlatformChoice) {
-				window.localStorage.setItem(
-					RANDOM_REVIEW_PLATFORM_PREFERENCE_KEY,
-					platform,
-				);
-				setPlatformPreference(platform);
+				setSavedPlatformPreference(platform);
 			}
 
 			beginSession({
@@ -160,7 +171,12 @@ export function useRandomReviewSession({
 				url: getPlatformUrl(platformChoiceProblem, platform),
 			});
 		},
-		[beginSession, platformChoiceProblem, rememberPlatformChoice],
+		[
+			beginSession,
+			platformChoiceProblem,
+			rememberPlatformChoice,
+			setSavedPlatformPreference,
+		],
 	);
 
 	const cancelPlatformChoice = React.useCallback(() => {
@@ -249,6 +265,10 @@ export function useRandomReviewSession({
 			rate,
 			openAgain,
 			skip,
+		},
+		settings: {
+			platformPreference,
+			setPlatformPreference: setSavedPlatformPreference,
 		},
 	};
 }

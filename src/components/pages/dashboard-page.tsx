@@ -17,6 +17,7 @@ import * as React from "react";
 import { SiLeetcode } from "react-icons/si";
 
 import { AddProblemDialog } from "@/components/dashboard/AddProblemDialog";
+import { DashboardSettingsDialog } from "@/components/dashboard/DashboardSettingsDialog";
 import {
 	PlatformChoiceDialog,
 	RandomReviewSessionDialog,
@@ -295,6 +296,12 @@ export function DashboardPage() {
 						<AddProblemDialog
 							open={addDialogOpen}
 							onOpenChange={setAddDialogOpen}
+						/>
+						<DashboardSettingsDialog
+							platformPreference={randomReview.settings.platformPreference}
+							onPlatformPreferenceChange={
+								randomReview.settings.setPlatformPreference
+							}
 						/>
 						<Link
 							className="underline decoration-white/30 underline-offset-4"
