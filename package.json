@@ -17,7 +17,9 @@
     "db:push": "drizzle-kit push",
     "db:pull": "drizzle-kit pull",
     "db:studio": "drizzle-kit studio",
-    "leetcode:cache": "tsx scripts/populate-leetcode-cache.ts"
+    "neetcode:cache": "tsx scripts/populate-neetcode-cache.ts",
+    "leetcode:cache": "tsx scripts/populate-leetcode-cache.ts",
+    "db:migrate:r": "wrangler d1 migrations apply DB --remote"
   },
   "dependencies": {
     "@base-ui/react": "1.2.0",
@@ -75,6 +77,7 @@
     "shadcn": "3.8.5",
     "tsx": "4.21.0",
     "typescript": "5.9.3",
-    "vitest": "3.2.4"
+    "vitest": "3.2.4",
+    "wrangler": "^4.86.0"
   }
 }

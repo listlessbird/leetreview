@@ -8,3 +8,4 @@ data/leetcode-cache.json
 data/*.sqlite
 data/*.sqlite-*
 .vercel
+data/*.json

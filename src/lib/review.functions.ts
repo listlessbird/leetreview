@@ -7,6 +7,7 @@ export type DueCard = {
 	difficulty: string;
 	tags: string[];
 	url: string;
+	neetcodeUrl: string | null;
 };
 
 export type ProblemRow = {
@@ -17,6 +18,7 @@ export type ProblemRow = {
 	difficulty: string;
 	tags: string[];
 	url: string;
+	neetcodeUrl: string | null;
 	due: number;
 	reps: number;
 };

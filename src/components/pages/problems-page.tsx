@@ -135,15 +135,28 @@ export function ProblemsPage() {
 				enableHiding: false,
 				header: () => <span className="sr-only">Open</span>,
 				cell: ({ row }) => (
-					<a
-						href={row.original.url}
-						target="_blank"
-						rel="noopener noreferrer"
-						aria-label={`Open ${row.original.title} on LeetCode`}
-						className="inline-flex size-8 items-center justify-center rounded border border-white/15 text-white/70 transition-colors duration-150 ease-out hover:border-white/30 hover:bg-white/10 hover:text-[#FFA116] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30"
-					>
-						<SiLeetcode className="size-3.5" />
-					</a>
+					<div className="flex items-center gap-1.5">
+						<a
+							href={row.original.url}
+							target="_blank"
+							rel="noopener noreferrer"
+							aria-label={`Open ${row.original.title} on LeetCode`}
+							className="inline-flex size-8 shrink-0 items-center justify-center rounded border border-white/15 text-white/70 transition-colors duration-150 ease-out hover:border-white/30 hover:bg-white/10 hover:text-[#FFA116] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30"
+						>
+							<SiLeetcode className="size-3.5" />
+						</a>
+						{row.original.neetcodeUrl && (
+							<a
+								href={row.original.neetcodeUrl}
+								target="_blank"
+								rel="noopener noreferrer"
+								aria-label={`Open ${row.original.title} on NeetCode`}
+								className="inline-flex size-8 shrink-0 items-center justify-center rounded border border-white/15 text-white/70 transition-colors duration-150 ease-out hover:border-white/30 hover:bg-white/10 hover:text-[#10b981] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30"
+							>
+								<span className="text-[10px] font-bold tracking-tighter leading-none mt-[1px]">NC</span>
+							</a>
+						)}
+					</div>
 				),
 				meta: {
 					label: "Open",

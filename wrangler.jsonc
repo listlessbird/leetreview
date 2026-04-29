@@ -1,0 +1,12 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "compatibility_date": "2026-04-29",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "leet-review-app",
+      "database_id": "4b47e0bd-0942-469a-9158-1475cd32522c",
+      "migrations_dir": "./drizzle"
+    }
+  ]
+}

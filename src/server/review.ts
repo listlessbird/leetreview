@@ -17,6 +17,7 @@ import {
 	extractLeetCodeSlug,
 	fetchLeetCodeQuestion,
 } from "@/lib/leetcode.server";
+import { getNeetcodeUrl } from "@/lib/neetcode.server";
 import { getSessionFromHeaders } from "@/server/session";
 
 const FSRS_CONFIG: Partial<FSRSParameters> = {
@@ -111,6 +112,7 @@ export async function getDueCards(requestHeaders: Headers) {
 			difficulty: problems.difficulty,
 			tags: problems.tags,
 			url: problems.url,
+			neetcodeUrl: problems.neetcodeUrl,
 		})
 		.from(cards)
 		.innerJoin(problems, eq(cards.problemId, problems.id))
@@ -141,6 +143,7 @@ export async function listProblems(requestHeaders: Headers) {
 			difficulty: problems.difficulty,
 			tags: problems.tags,
 			url: problems.url,
+			neetcodeUrl: problems.neetcodeUrl,
 			createdAt: problems.createdAt,
 			cardId: cards.id,
 			due: cards.due,
@@ -176,6 +179,7 @@ export async function addProblemFromUrl(requestHeaders: Headers, url: string) {
 	}
 
 	const metadata = await fetchLeetCodeQuestion(slug);
+	const neetcodeUrl = await getNeetcodeUrl(slug);
 	const problemId = nanoid();
 	const cardId = nanoid();
 	const ts = nowUnix();
@@ -192,6 +196,7 @@ export async function addProblemFromUrl(requestHeaders: Headers, url: string) {
 		difficulty: metadata.difficulty,
 		tags: JSON.stringify(metadata.tags),
 		url,
+		neetcodeUrl,
 		createdAt: ts,
 	});
 
