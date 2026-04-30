@@ -37,28 +37,37 @@ import {
 import { useAdaptiveNow } from "@/hooks/use-adaptive-now";
 import { useRandomReviewSession } from "@/hooks/use-random-review-session";
 import { useRowNavHotkeys } from "@/hooks/use-row-hotkeys";
+import type { DailyReviewPlanSummary } from "@/lib/daily-review-plan";
 import { formatDueExact, formatDueRelative } from "@/lib/due-date";
 import { HOTKEY_LABELS, HOTKEYS } from "@/lib/hotkeys";
 import {
 	type DueCard as DashboardCard,
+	type DueCardsResponse,
 	fetchDueCards,
 	reviewQueryKeys,
 } from "@/lib/review.functions";
 
-export function DashboardPage() {
+export function DashboardPage({
+	initialDailyReviewPlan,
+}: {
+	initialDailyReviewPlan?: DueCardsResponse;
+}) {
 	const [addDialogOpen, setAddDialogOpen] = React.useState(false);
 	const [reviewCardId, setReviewCardId] = React.useState<string | null>(null);
 	const searchInputRef = React.useRef<HTMLInputElement>(null);
 	const [search, setSearch] = React.useState("");
 	const {
-		data: dueCards = [],
+		data: dailyReviewPlan,
 		error,
 		isLoading,
 	} = useQuery({
 		queryKey: reviewQueryKeys.dueCards,
 		queryFn: fetchDueCards,
+		initialData: initialDailyReviewPlan,
 		staleTime: 30_000,
 	});
+	const plannedCards = dailyReviewPlan?.cards ?? [];
+	const planSummary = dailyReviewPlan?.summary ?? null;
 	const deferredSearch = React.useDeferredValue(search.trim().toLowerCase());
 	const [sorting, setSorting] = React.useState<SortingState>([
 		{ id: "difficulty", desc: true },
@@ -70,22 +79,22 @@ export function DashboardPage() {
 	});
 	const searchableRows = React.useMemo(
 		() =>
-			dueCards.map((card) => ({
+			plannedCards.map((card) => ({
 				card,
 				searchText:
 					`${card.title} ${card.difficulty} ${card.tags.join(" ")}`.toLowerCase(),
 			})),
-		[dueCards],
+		[plannedCards],
 	);
-	const filteredDueCards = React.useMemo(() => {
-		if (!deferredSearch) return dueCards;
+	const filteredPlannedCards = React.useMemo(() => {
+		if (!deferredSearch) return plannedCards;
 		return searchableRows.flatMap(({ searchText, card }) =>
 			searchText.includes(deferredSearch) ? [card] : [],
 		);
-	}, [deferredSearch, dueCards, searchableRows]);
+	}, [deferredSearch, plannedCards, searchableRows]);
 	const dueUnixList = React.useMemo(
-		() => filteredDueCards.map((card) => card.due),
-		[filteredDueCards],
+		() => filteredPlannedCards.map((card) => card.due),
+		[filteredPlannedCards],
 	);
 	const nowMs = useAdaptiveNow(dueUnixList);
 
@@ -230,7 +239,7 @@ export function DashboardPage() {
 	);
 
 	const table = useReactTable({
-		data: filteredDueCards,
+		data: filteredPlannedCards,
 		columns,
 		state: {
 			sorting,
@@ -248,7 +257,7 @@ export function DashboardPage() {
 		setReviewCardId(null);
 	}, []);
 	const randomReview = useRandomReviewSession({
-		cards: filteredDueCards,
+		cards: filteredPlannedCards,
 		isLoading,
 		isBlocked: addDialogOpen,
 		hasSearch: Boolean(deferredSearch),
@@ -277,13 +286,15 @@ export function DashboardPage() {
 		<div className="min-h-screen bg-[#07070e] p-8 font-berkeley text-[#ededf5]">
 			<div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
 				<header className="flex flex-wrap items-center justify-between gap-3">
-					<h1 className="text-2xl font-bold tracking-tight">Review Queue</h1>
+					<h1 className="text-2xl font-bold tracking-tight">
+						Daily Review Plan
+					</h1>
 					<div className="flex items-center gap-3 text-sm">
 						<button
 							type="button"
 							onClick={randomReview.start}
 							disabled={
-								isLoading || randomReview.isActive || dueCards.length === 0
+								isLoading || randomReview.isActive || plannedCards.length === 0
 							}
 							className="group inline-flex transform-gpu items-center gap-2 rounded border border-emerald-500/30 bg-emerald-500/[0.07] px-3 py-1.5 text-sm text-[#ededf5] transition-all duration-150 ease-out hover:border-emerald-400/50 hover:bg-emerald-500/15 active:scale-[0.975] disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transform-none"
 						>
@@ -320,20 +331,21 @@ export function DashboardPage() {
 
 				{isLoading ? (
 					<div className="rounded border border-white/10 bg-white/5 p-5 text-sm text-white/70">
-						Loading review queue...
+						Loading daily review plan...
 					</div>
 				) : error ? (
 					<div className="rounded border border-red-500/20 bg-red-500/6 p-5 text-sm text-red-200">
 						{error instanceof Error
 							? error.message
-							: "Could not load review queue."}
+							: "Could not load daily review plan."}
 					</div>
-				) : dueCards.length === 0 ? (
+				) : plannedCards.length === 0 ? (
 					<div className="rounded border border-white/10 bg-white/5 p-5 text-sm text-white/70">
 						No reviews are ready right now.
 					</div>
 				) : (
 					<>
+						{planSummary ? <PlanSummaryBar summary={planSummary} /> : null}
 						<div className="flex items-center justify-between gap-3">
 							<div className="relative w-full max-w-sm">
 								<Search className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-2.5 size-4 text-white/45" />
@@ -358,8 +370,8 @@ export function DashboardPage() {
 							</div>
 							{deferredSearch ? (
 								<p className="whitespace-nowrap text-sm text-white/60">
-									{filteredDueCards.length} result
-									{filteredDueCards.length === 1 ? "" : "s"}
+									{filteredPlannedCards.length} result
+									{filteredPlannedCards.length === 1 ? "" : "s"}
 								</p>
 							) : null}
 						</div>
@@ -393,6 +405,35 @@ export function DashboardPage() {
 				onOpenAgain={randomReview.sessionDialog.openAgain}
 				onSkip={randomReview.sessionDialog.skip}
 			/>
+		</div>
+	);
+}
+
+function PlanSummaryBar({ summary }: { summary: DailyReviewPlanSummary }) {
+	const stats = [
+		{
+			label: "Planned",
+			value: `${summary.plannedCount}/${summary.dailyReviewCount}`,
+		},
+		{ label: "Review Queue", value: summary.reviewQueueCount },
+		{ label: "Backlog waiting", value: summary.backlogNotPlannedCount },
+		{ label: "Due", value: summary.plannedDueCount },
+		{ label: "Low-practice", value: summary.plannedLowPracticeCount },
+		{ label: "High-risk", value: summary.plannedHighRiskCount },
+	];
+
+	return (
+		<div className="grid gap-2 rounded border border-white/10 bg-white/[0.035] p-3 sm:grid-cols-2 lg:grid-cols-6">
+			{stats.map((stat) => (
+				<div key={stat.label} className="min-w-0">
+					<div className="text-[11px] uppercase tracking-wide text-white/45">
+						{stat.label}
+					</div>
+					<div className="mt-1 truncate font-semibold text-lg text-[#ededf5]">
+						{stat.value}
+					</div>
+				</div>
+			))}
 		</div>
 	);
 }

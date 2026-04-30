@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { DailyReviewPlanSummary } from "@/lib/daily-review-plan";
 
 export type DueCard = {
 	cardId: string;
@@ -8,6 +9,11 @@ export type DueCard = {
 	tags: string[];
 	url: string;
 	neetcodeUrl: string | null;
+};
+
+export type DueCardsResponse = {
+	cards: DueCard[];
+	summary: DailyReviewPlanSummary;
 };
 
 export type ProblemRow = {
@@ -71,7 +77,7 @@ export async function fetchDueCards() {
 		);
 	}
 
-	return (await response.json()) as DueCard[];
+	return (await response.json()) as DueCardsResponse;
 }
 
 export async function fetchProblems() {
