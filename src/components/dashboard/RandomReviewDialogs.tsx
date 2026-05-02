@@ -5,6 +5,7 @@ import { ExternalLink, Shuffle } from "lucide-react";
 import { useId } from "react";
 import { SiLeetcode } from "react-icons/si";
 
+import { EditProblemButton } from "@/components/problems/EditProblemDialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
 	Dialog,
@@ -15,12 +16,12 @@ import {
 } from "@/components/ui/dialog";
 import { Kbd } from "@/components/ui/kbd";
 import { HOTKEY_LABELS, HOTKEYS } from "@/lib/hotkeys";
-import { cn } from "@/lib/utils";
 import type {
 	RandomReviewSession as RandomReviewSessionModel,
 	ReviewPlatform,
 } from "@/lib/random-review";
 import type { DueCard } from "@/lib/review.functions";
+import { cn } from "@/lib/utils";
 
 export type RandomReviewSession = RandomReviewSessionModel<DueCard>;
 
@@ -111,22 +112,49 @@ function RandomReviewHotkeys({
 	onRate: (rating: 1 | 2 | 3 | 4) => void;
 	isSubmitting: boolean;
 }) {
-	useHotkey(HOTKEYS.rateAgain, () => { if (!isSubmitting) onRate(1); }, {
-		ignoreInputs: true,
-		meta: { name: "Random review: Again", description: "Submit Again rating" },
-	});
-	useHotkey(HOTKEYS.rateHard, () => { if (!isSubmitting) onRate(2); }, {
-		ignoreInputs: true,
-		meta: { name: "Random review: Hard", description: "Submit Hard rating" },
-	});
-	useHotkey(HOTKEYS.rateGood, () => { if (!isSubmitting) onRate(3); }, {
-		ignoreInputs: true,
-		meta: { name: "Random review: Good", description: "Submit Good rating" },
-	});
-	useHotkey(HOTKEYS.rateEasy, () => { if (!isSubmitting) onRate(4); }, {
-		ignoreInputs: true,
-		meta: { name: "Random review: Easy", description: "Submit Easy rating" },
-	});
+	useHotkey(
+		HOTKEYS.rateAgain,
+		() => {
+			if (!isSubmitting) onRate(1);
+		},
+		{
+			ignoreInputs: true,
+			meta: {
+				name: "Random review: Again",
+				description: "Submit Again rating",
+			},
+		},
+	);
+	useHotkey(
+		HOTKEYS.rateHard,
+		() => {
+			if (!isSubmitting) onRate(2);
+		},
+		{
+			ignoreInputs: true,
+			meta: { name: "Random review: Hard", description: "Submit Hard rating" },
+		},
+	);
+	useHotkey(
+		HOTKEYS.rateGood,
+		() => {
+			if (!isSubmitting) onRate(3);
+		},
+		{
+			ignoreInputs: true,
+			meta: { name: "Random review: Good", description: "Submit Good rating" },
+		},
+	);
+	useHotkey(
+		HOTKEYS.rateEasy,
+		() => {
+			if (!isSubmitting) onRate(4);
+		},
+		{
+			ignoreInputs: true,
+			meta: { name: "Random review: Easy", description: "Submit Easy rating" },
+		},
+	);
 	return null;
 }
 
@@ -154,9 +182,18 @@ export function RandomReviewSessionDialog({
 						<DialogHeader>
 							<div className="flex items-start justify-between gap-4">
 								<div className="min-w-0">
-									<DialogTitle className="truncate text-xl text-[#ededf5]">
-										{session.problem.title}
-									</DialogTitle>
+									<div className="flex items-center gap-2">
+										<DialogTitle className="truncate text-xl text-[#ededf5]">
+											{session.problem.title}
+										</DialogTitle>
+										<EditProblemButton
+											problemId={session.problem.problemId}
+											title={session.problem.title}
+											url={session.problem.url}
+											neetcodeUrl={session.problem.neetcodeUrl}
+											tags={session.problem.tags}
+										/>
+									</div>
 									<DialogDescription className="mt-1 text-sm text-white/55">
 										Score this Random Review Session when you return.
 									</DialogDescription>

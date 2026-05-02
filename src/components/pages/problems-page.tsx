@@ -15,10 +15,10 @@ import { Search } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
 import { SiLeetcode } from "react-icons/si";
-
-import { ReviewRowContent } from "@/components/review/ReviewRowContent";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
+import { EditProblemButton } from "@/components/problems/EditProblemDialog";
+import { ReviewRowContent } from "@/components/review/ReviewRowContent";
 import { Badge } from "@/components/ui/badge";
 import { BadgeOverflow } from "@/components/ui/badge-overflow";
 import { Input } from "@/components/ui/input";
@@ -112,7 +112,9 @@ export function ProblemsPage() {
 					const num =
 						table.getRowModel().rows.findIndex((r) => r.id === row.id) + 1;
 					return (
-						<Kbd className="border border-white/15 bg-white/8 text-[10px] text-white/45">{num}</Kbd>
+						<Kbd className="border border-white/15 bg-white/8 text-[10px] text-white/45">
+							{num}
+						</Kbd>
 					);
 				},
 				meta: { label: "#" },
@@ -124,8 +126,16 @@ export function ProblemsPage() {
 					<DataTableColumnHeader column={column} label="Title" />
 				),
 				cell: ({ row }) => (
-					<div className="max-w-[30rem] truncate font-medium">
-						{row.original.title}
+					<div className="group/title flex max-w-[30rem] items-center gap-2">
+						<span className="truncate font-medium">{row.original.title}</span>
+						<EditProblemButton
+							problemId={row.original.problemId}
+							title={row.original.title}
+							url={row.original.url}
+							neetcodeUrl={row.original.neetcodeUrl}
+							tags={row.original.tags}
+							className="opacity-0 transition-opacity group-hover/title:opacity-100"
+						/>
 					</div>
 				),
 			},
@@ -153,7 +163,9 @@ export function ProblemsPage() {
 								aria-label={`Open ${row.original.title} on NeetCode`}
 								className="inline-flex size-8 shrink-0 items-center justify-center rounded border border-white/15 text-white/70 transition-colors duration-150 ease-out hover:border-white/30 hover:bg-white/10 hover:text-[#10b981] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30"
 							>
-								<span className="text-[10px] font-bold tracking-tighter leading-none mt-[1px]">NC</span>
+								<span className="text-[10px] font-bold tracking-tighter leading-none mt-[1px]">
+									NC
+								</span>
 							</a>
 						)}
 					</div>
@@ -207,9 +219,13 @@ export function ProblemsPage() {
 				cell: ({ row }) => (
 					<button
 						type="button"
-						onClick={() => setReviewCardId(
-							reviewCardId === row.original.cardId ? null : row.original.cardId
-						)}
+						onClick={() =>
+							setReviewCardId(
+								reviewCardId === row.original.cardId
+									? null
+									: row.original.cardId,
+							)
+						}
 						className="transform-gpu rounded border border-white/20 px-2.5 py-1.5 text-sm transition-colors duration-150 ease-out hover:bg-white/10 active:scale-[0.97] motion-reduce:transform-none motion-reduce:transition-none"
 					>
 						Review
@@ -236,13 +252,12 @@ export function ProblemsPage() {
 		getPaginationRowModel: getPaginationRowModel(),
 	});
 
-	const pageRows = table
-		.getRowModel()
-		.rows.map((row) => ({
-			onSelect: () => setReviewCardId(
+	const pageRows = table.getRowModel().rows.map((row) => ({
+		onSelect: () =>
+			setReviewCardId(
 				reviewCardId === row.original.cardId ? null : row.original.cardId,
 			),
-		}));
+	}));
 	useRowNavHotkeys(pageRows);
 
 	return (
@@ -272,7 +287,10 @@ export function ProblemsPage() {
 						/>
 						<KbdGroup className="-translate-y-1/2 pointer-events-none absolute top-1/2 right-2">
 							{HOTKEY_LABELS.searchFocus.map((key) => (
-								<Kbd key={key} className="border border-white/15 bg-white/8 text-[10px] text-white/50">
+								<Kbd
+									key={key}
+									className="border border-white/15 bg-white/8 text-[10px] text-white/50"
+								>
 									{key}
 								</Kbd>
 							))}

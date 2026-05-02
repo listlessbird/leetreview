@@ -24,6 +24,7 @@ import {
 } from "@/components/dashboard/RandomReviewDialogs";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
+import { EditProblemButton } from "@/components/problems/EditProblemDialog";
 import { ReviewRowContent } from "@/components/review/ReviewRowContent";
 import { Badge } from "@/components/ui/badge";
 import { BadgeOverflow } from "@/components/ui/badge-overflow";
@@ -143,8 +144,16 @@ export function DashboardPage({
 					<DataTableColumnHeader column={column} label="Title" />
 				),
 				cell: ({ row }) => (
-					<div className="max-w-[30rem] truncate font-medium">
-						{row.original.title}
+					<div className="group/title flex max-w-[30rem] items-center gap-2">
+						<span className="truncate font-medium">{row.original.title}</span>
+						<EditProblemButton
+							problemId={row.original.problemId}
+							title={row.original.title}
+							url={row.original.url}
+							neetcodeUrl={row.original.neetcodeUrl}
+							tags={row.original.tags}
+							className="opacity-0 transition-opacity group-hover/title:opacity-100"
+						/>
 					</div>
 				),
 			},

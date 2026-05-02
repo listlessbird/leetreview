@@ -111,6 +111,7 @@ export async function getDueCards(requestHeaders: Headers) {
 	const rows = await db
 		.select({
 			cardId: cards.id,
+			problemId: problems.id,
 			due: cards.due,
 			state: cards.state,
 			slug: problems.slug,
@@ -150,6 +151,7 @@ export async function getDueCards(requestHeaders: Headers) {
 	return {
 		cards: plan.cards.map((row) => ({
 			cardId: row.cardId,
+			problemId: row.problemId,
 			due: row.due,
 			state: row.state,
 			slug: row.slug,
@@ -216,6 +218,41 @@ export async function listProblems(requestHeaders: Headers) {
 		...row,
 		tags: JSON.parse(row.tags) as string[],
 	}));
+}
+
+export async function updateProblemMeta(
+	requestHeaders: Headers,
+	problemId: string,
+	input: { url: string; neetcodeUrl: string | null; tags: string[] },
+) {
+	const userId = await getCurrentUserId(requestHeaders);
+	const db = await getDb();
+
+	const existing = await db
+		.select({ id: problems.id })
+		.from(problems)
+		.where(and(eq(problems.id, problemId), eq(problems.userId, userId)))
+		.limit(1);
+
+	if (!existing[0]) {
+		throw new Error("Problem not found.");
+	}
+
+	await db
+		.update(problems)
+		.set({
+			url: input.url,
+			neetcodeUrl: input.neetcodeUrl,
+			tags: JSON.stringify(input.tags),
+		})
+		.where(eq(problems.id, problemId));
+
+	return {
+		problemId,
+		url: input.url,
+		neetcodeUrl: input.neetcodeUrl,
+		tags: input.tags,
+	};
 }
 
 export async function addProblemFromUrl(requestHeaders: Headers, url: string) {
@@ -288,6 +325,7 @@ export async function getReviewCard(requestHeaders: Headers, cardId: string) {
 			difficulty: problems.difficulty,
 			tags: problems.tags,
 			url: problems.url,
+			neetcodeUrl: problems.neetcodeUrl,
 			due: cards.due,
 			state: cards.state,
 			reps: cards.reps,

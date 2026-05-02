@@ -3,6 +3,7 @@ import type { DailyReviewPlanSummary } from "@/lib/daily-review-plan";
 
 export type DueCard = {
 	cardId: string;
+	problemId: string;
 	due: number;
 	title: string;
 	difficulty: string;
@@ -31,10 +32,25 @@ export type ProblemRow = {
 
 export type ReviewCard = {
 	cardId: string;
+	problemId: string;
 	title: string;
 	difficulty: string;
 	tags: string[];
 	url: string;
+	neetcodeUrl: string | null;
+};
+
+export type UpdateProblemMetaInput = {
+	url: string;
+	neetcodeUrl: string | null;
+	tags: string[];
+};
+
+export type UpdatedProblemMeta = {
+	problemId: string;
+	url: string;
+	neetcodeUrl: string | null;
+	tags: string[];
 };
 
 export const reviewQueryKeys = {
@@ -54,6 +70,12 @@ const reviewInput = z.object({
 
 const cardIdInput = z.object({
 	cardId: z.string().min(1),
+});
+
+const updateProblemInput = z.object({
+	url: z.string().url(),
+	neetcodeUrl: z.string().url().nullable(),
+	tags: z.array(z.string().min(1)).max(50),
 });
 
 async function readErrorMessage(
@@ -123,6 +145,31 @@ export async function addProblemFromUrl({ data }: { data: { url: string } }) {
 		cardId: string;
 		created: boolean;
 	};
+}
+
+export async function updateProblem({
+	problemId,
+	data,
+}: {
+	problemId: string;
+	data: UpdateProblemMetaInput;
+}) {
+	const body = updateProblemInput.parse(data);
+	const response = await fetch(`/api/problems/${problemId}`, {
+		method: "PATCH",
+		headers: {
+			"content-type": "application/json",
+		},
+		body: JSON.stringify(body),
+	});
+
+	if (!response.ok) {
+		throw new Error(
+			await readErrorMessage(response, "Could not update problem."),
+		);
+	}
+
+	return (await response.json()) as UpdatedProblemMeta;
 }
 
 export async function submitReview({

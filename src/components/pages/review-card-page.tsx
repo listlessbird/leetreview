@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { EditProblemButton } from "@/components/problems/EditProblemDialog";
 import {
 	fetchReviewCard,
 	reviewQueryKeys,
@@ -74,7 +75,16 @@ export function ReviewCardPage({ cardId }: { cardId: string }) {
 	return (
 		<div className="min-h-screen bg-[#07070e] p-8 font-berkeley text-[#ededf5]">
 			<div className="mx-auto w-full max-w-3xl rounded border border-white/10 bg-white/5 p-6">
-				<h1 className="text-2xl font-bold tracking-tight">{card.title}</h1>
+				<div className="flex items-center gap-3">
+					<h1 className="text-2xl font-bold tracking-tight">{card.title}</h1>
+					<EditProblemButton
+						problemId={card.problemId}
+						title={card.title}
+						url={card.url}
+						neetcodeUrl={card.neetcodeUrl}
+						tags={card.tags}
+					/>
+				</div>
 				<p className="mt-1 text-sm text-white/65">
 					Difficulty: {card.difficulty}
 				</p>
