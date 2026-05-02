@@ -22,6 +22,7 @@ import {
 
 type UseRandomReviewSessionOptions = {
 	cards: readonly DueCard[];
+	sessionCards?: readonly DueCard[];
 	isLoading: boolean;
 	isBlocked: boolean;
 	hasSearch: boolean;
@@ -30,22 +31,29 @@ type UseRandomReviewSessionOptions = {
 
 const REVIEW_PLATFORMS = ["leetcode", "neetcode"] as const;
 
+function matchesRandomProblemState(card: DueCard, randomState: string) {
+	return card.slug === randomState || card.cardId === randomState;
+}
+
 export function useRandomReviewSession({
 	cards,
+	sessionCards = cards,
 	isLoading,
 	isBlocked,
 	hasSearch,
 	onSessionStart,
 }: UseRandomReviewSessionOptions) {
 	const queryClient = useQueryClient();
-	const [{ random: randomCardId, platform: platformParam }, setRandomState] =
-		useQueryStates(
-			{
-				random: parseAsString,
-				platform: parseAsStringLiteral(REVIEW_PLATFORMS),
-			},
-			{ history: "replace" },
-		);
+	const [
+		{ random: randomProblemSlug, platform: platformParam },
+		setRandomState,
+	] = useQueryStates(
+		{
+			random: parseAsString,
+			platform: parseAsStringLiteral(REVIEW_PLATFORMS),
+		},
+		{ history: "replace" },
+	);
 	const [rememberPlatformChoice, setRememberPlatformChoice] =
 		React.useState(false);
 	const [platformPreference, setPlatformPreference] =
@@ -58,9 +66,13 @@ export function useRandomReviewSession({
 	const [isSubmitting, setIsSubmitting] = React.useState(false);
 
 	const randomProblem = React.useMemo(() => {
-		if (!randomCardId) return null;
-		return cards.find((card) => card.cardId === randomCardId) ?? null;
-	}, [cards, randomCardId]);
+		if (!randomProblemSlug) return null;
+		return (
+			sessionCards.find((card) =>
+				matchesRandomProblemState(card, randomProblemSlug),
+			) ?? null
+		);
+	}, [randomProblemSlug, sessionCards]);
 
 	const { session, platformChoiceProblem } = React.useMemo<{
 		session: RandomReviewSession<DueCard> | null;
@@ -110,10 +122,20 @@ export function useRandomReviewSession({
 	}, []);
 
 	React.useEffect(() => {
-		if (isLoading || !randomCardId) return;
-		if (cards.some((card) => card.cardId === randomCardId)) return;
+		if (isLoading || !randomProblemSlug) return;
+		if (
+			sessionCards.some((card) =>
+				matchesRandomProblemState(card, randomProblemSlug),
+			)
+		)
+			return;
 		void setRandomState(null);
-	}, [cards, isLoading, randomCardId, setRandomState]);
+	}, [isLoading, randomProblemSlug, sessionCards, setRandomState]);
+
+	React.useEffect(() => {
+		if (!randomProblem || randomProblemSlug !== randomProblem.cardId) return;
+		void setRandomState({ random: randomProblem.slug });
+	}, [randomProblem, randomProblemSlug, setRandomState]);
 
 	const openUrl = React.useCallback((url: string) => {
 		const opened = window.open(url, "_blank", "noopener,noreferrer");
@@ -154,12 +176,12 @@ export function useRandomReviewSession({
 			setRememberPlatformChoice(false);
 
 			if (resolution.type === "choose") {
-				void setRandomState({ random: problem.cardId, platform: null });
+				void setRandomState({ random: problem.slug, platform: null });
 				return;
 			}
 
 			void setRandomState({
-				random: problem.cardId,
+				random: problem.slug,
 				platform: resolution.platform,
 			});
 			openUrl(resolution.url);

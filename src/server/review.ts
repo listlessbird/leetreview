@@ -148,6 +148,19 @@ export async function getDueCards(requestHeaders: Headers) {
 		dailyReviewCount: DEFAULT_DAILY_REVIEW_COUNT,
 	});
 
+	const reviewQueueCards = rows.map((row) => ({
+		cardId: row.cardId,
+		problemId: row.problemId,
+		due: row.due,
+		state: row.state,
+		slug: row.slug,
+		title: row.title,
+		difficulty: row.difficulty,
+		tags: JSON.parse(row.tags) as string[],
+		url: row.url,
+		neetcodeUrl: row.neetcodeUrl,
+	}));
+
 	return {
 		cards: plan.cards.map((row) => ({
 			cardId: row.cardId,
@@ -161,6 +174,7 @@ export async function getDueCards(requestHeaders: Headers) {
 			url: row.url,
 			neetcodeUrl: row.neetcodeUrl,
 		})),
+		reviewQueueCards,
 		summary: plan.summary,
 	};
 }

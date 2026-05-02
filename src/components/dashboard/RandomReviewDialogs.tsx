@@ -174,16 +174,16 @@ export function RandomReviewSessionDialog({
 				showCloseButton={false}
 				onEscapeKeyDown={(event) => event.preventDefault()}
 				onInteractOutside={(event) => event.preventDefault()}
-				className="border-white/10 bg-[#11121a] text-[#ededf5] sm:max-w-2xl"
+				className="max-h-[calc(100dvh-2rem)] overflow-y-auto border-white/10 bg-[#11121a] p-4 text-[#ededf5] sm:max-w-2xl sm:p-6"
 			>
 				{session ? (
 					<>
 						<RandomReviewHotkeys onRate={onRate} isSubmitting={isSubmitting} />
 						<DialogHeader>
-							<div className="flex items-start justify-between gap-4">
-								<div className="min-w-0">
-									<div className="flex items-center gap-2">
-										<DialogTitle className="truncate text-xl text-[#ededf5]">
+							<div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+								<div className="min-w-0 flex-1">
+									<div className="flex min-w-0 items-start gap-2">
+										<DialogTitle className="min-w-0 text-lg leading-tight text-[#ededf5] [overflow-wrap:anywhere] sm:text-xl">
 											{session.problem.title}
 										</DialogTitle>
 										<EditProblemButton
@@ -192,6 +192,7 @@ export function RandomReviewSessionDialog({
 											url={session.problem.url}
 											neetcodeUrl={session.problem.neetcodeUrl}
 											tags={session.problem.tags}
+											className="mt-0.5"
 										/>
 									</div>
 									<DialogDescription className="mt-1 text-sm text-white/55">
@@ -214,7 +215,7 @@ export function RandomReviewSessionDialog({
 								</span>
 							))}
 						</div>
-						<div className="grid gap-2 sm:grid-cols-4">
+						<div className="grid gap-2 sm:grid-cols-2 md:grid-cols-4">
 							<RatingButton
 								label="Again"
 								hint="couldn't derive without major hint"
@@ -253,23 +254,23 @@ export function RandomReviewSessionDialog({
 								{error}
 							</p>
 						) : null}
-						<div className="flex flex-wrap items-center justify-between gap-2">
+						<div className="grid gap-2 sm:grid-cols-2">
 							<button
 								type="button"
 								onClick={onOpenAgain}
-								className="inline-flex items-center gap-2 rounded border border-white/15 px-3 py-2 text-sm text-white/70 transition-colors duration-150 ease-out hover:bg-white/8 hover:text-white"
+								className="inline-flex min-w-0 items-center justify-center gap-2 rounded border border-white/15 px-3 py-2 text-sm text-white/70 transition-colors duration-150 ease-out hover:bg-white/8 hover:text-white sm:justify-self-start"
 							>
-								<ExternalLink className="size-4" />
-								Open again
+								<ExternalLink className="size-4 shrink-0" />
+								<span className="truncate">Open again</span>
 							</button>
 							<button
 								type="button"
 								onClick={onSkip}
 								disabled={isSubmitting}
-								className="inline-flex items-center gap-2 rounded border border-white/15 px-3 py-2 text-sm text-white/60 transition-colors duration-150 ease-out hover:bg-white/8 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+								className="inline-flex min-w-0 items-center justify-center gap-2 rounded border border-white/15 px-3 py-2 text-sm text-white/60 transition-colors duration-150 ease-out hover:bg-white/8 hover:text-white disabled:cursor-not-allowed disabled:opacity-50 sm:justify-self-end"
 							>
-								<Shuffle className="size-4" />
-								Skip / choose another
+								<Shuffle className="size-4 shrink-0" />
+								<span className="truncate">Skip / choose another</span>
 							</button>
 						</div>
 					</>

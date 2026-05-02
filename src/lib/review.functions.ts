@@ -5,6 +5,7 @@ export type DueCard = {
 	cardId: string;
 	problemId: string;
 	due: number;
+	slug: string;
 	title: string;
 	difficulty: string;
 	tags: string[];
@@ -14,6 +15,7 @@ export type DueCard = {
 
 export type DueCardsResponse = {
 	cards: DueCard[];
+	reviewQueueCards: DueCard[];
 	summary: DailyReviewPlanSummary;
 };
 

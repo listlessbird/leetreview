@@ -68,6 +68,7 @@ export function DashboardPage({
 		staleTime: 30_000,
 	});
 	const plannedCards = dailyReviewPlan?.cards ?? [];
+	const reviewQueueCards = dailyReviewPlan?.reviewQueueCards ?? plannedCards;
 	const planSummary = dailyReviewPlan?.summary ?? null;
 	const deferredSearch = React.useDeferredValue(search.trim().toLowerCase());
 	const [sorting, setSorting] = React.useState<SortingState>([
@@ -267,6 +268,7 @@ export function DashboardPage({
 	}, []);
 	const randomReview = useRandomReviewSession({
 		cards: filteredPlannedCards,
+		sessionCards: reviewQueueCards,
 		isLoading,
 		isBlocked: addDialogOpen,
 		hasSearch: Boolean(deferredSearch),
