@@ -295,33 +295,34 @@ export async function addProblemFromUrl(requestHeaders: Headers, url: string) {
 		metadata.difficulty,
 	);
 
-	await db.insert(problems).values({
-		id: problemId,
-		userId,
-		slug,
-		title: metadata.title,
-		difficulty: metadata.difficulty,
-		tags: JSON.stringify(metadata.tags),
-		url,
-		neetcodeUrl,
-		createdAt: ts,
-	});
-
-	await db.insert(cards).values({
-		id: cardId,
-		userId,
-		problemId,
-		due: startOfTomorrowUtcUnix(),
-		stability: baseCard.stability,
-		difficulty: baseCard.difficulty,
-		elapsedDays: baseCard.elapsed_days,
-		scheduledDays: baseCard.scheduled_days,
-		learningSteps: baseCard.learning_steps,
-		reps: baseCard.reps,
-		lapses: baseCard.lapses,
-		state: baseCard.state,
-		lastReview: null,
-	});
+	await db.batch([
+		db.insert(problems).values({
+			id: problemId,
+			userId,
+			slug,
+			title: metadata.title,
+			difficulty: metadata.difficulty,
+			tags: JSON.stringify(metadata.tags),
+			url,
+			neetcodeUrl,
+			createdAt: ts,
+		}),
+		db.insert(cards).values({
+			id: cardId,
+			userId,
+			problemId,
+			due: startOfTomorrowUtcUnix(),
+			stability: baseCard.stability,
+			difficulty: baseCard.difficulty,
+			elapsedDays: baseCard.elapsed_days,
+			scheduledDays: baseCard.scheduled_days,
+			learningSteps: baseCard.learning_steps,
+			reps: baseCard.reps,
+			lapses: baseCard.lapses,
+			state: baseCard.state,
+			lastReview: null,
+		}),
+	]);
 
 	return { cardId, created: true };
 }
@@ -409,7 +410,7 @@ export async function submitReview(
 	const nextCard = next.card;
 	const reviewLog = next.log;
 
-	await Promise.all([
+	await db.batch([
 		db
 			.update(cards)
 			.set({
