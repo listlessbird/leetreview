@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, desc, eq, isNull, lt, lte, or } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, lt, lte, or } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import {
 	type Card,
@@ -14,9 +14,15 @@ import {
 import { getDb } from "@/db";
 import { cards, problems, reviewLogs } from "@/db/schema";
 import {
+	buildDailyReviewPlan,
+	DEFAULT_DAILY_REVIEW_COUNT,
+	type ReviewRating,
+} from "@/lib/daily-review-plan";
+import {
 	extractLeetCodeSlug,
 	fetchLeetCodeQuestion,
 } from "@/lib/leetcode.server";
+import { getNeetcodeUrl } from "@/lib/neetcode.server";
 import { getSessionFromHeaders } from "@/server/session";
 
 const FSRS_CONFIG: Partial<FSRSParameters> = {
@@ -99,11 +105,13 @@ export async function getDueCards(requestHeaders: Headers) {
 	const userId = await getCurrentUserId(requestHeaders);
 	const dueBy = endOfTodayUtcUnix();
 	const reviewedBefore = startOfTodayUtcUnix();
+	const reviewNow = nowUnix();
 	const db = await getDb();
 
 	const rows = await db
 		.select({
 			cardId: cards.id,
+			problemId: problems.id,
 			due: cards.due,
 			state: cards.state,
 			slug: problems.slug,
@@ -111,6 +119,10 @@ export async function getDueCards(requestHeaders: Headers) {
 			difficulty: problems.difficulty,
 			tags: problems.tags,
 			url: problems.url,
+			neetcodeUrl: problems.neetcodeUrl,
+			createdAt: problems.createdAt,
+			reps: cards.reps,
+			lapses: cards.lapses,
 		})
 		.from(cards)
 		.innerJoin(problems, eq(cards.problemId, problems.id))
@@ -123,10 +135,72 @@ export async function getDueCards(requestHeaders: Headers) {
 		)
 		.orderBy(asc(cards.due));
 
-	return rows.map((row) => ({
-		...row,
+	const latestRatingByCardId = await getLatestRatingByCardId(
+		userId,
+		rows.map((row) => row.cardId),
+	);
+	const plan = buildDailyReviewPlan({
+		reviewQueue: rows.map((row) => ({
+			...row,
+			latestRating: latestRatingByCardId.get(row.cardId) ?? null,
+		})),
+		nowUnix: reviewNow,
+		dailyReviewCount: DEFAULT_DAILY_REVIEW_COUNT,
+	});
+
+	const reviewQueueCards = rows.map((row) => ({
+		cardId: row.cardId,
+		problemId: row.problemId,
+		due: row.due,
+		state: row.state,
+		slug: row.slug,
+		title: row.title,
+		difficulty: row.difficulty,
 		tags: JSON.parse(row.tags) as string[],
+		url: row.url,
+		neetcodeUrl: row.neetcodeUrl,
 	}));
+
+	return {
+		cards: plan.cards.map((row) => ({
+			cardId: row.cardId,
+			problemId: row.problemId,
+			due: row.due,
+			state: row.state,
+			slug: row.slug,
+			title: row.title,
+			difficulty: row.difficulty,
+			tags: JSON.parse(row.tags) as string[],
+			url: row.url,
+			neetcodeUrl: row.neetcodeUrl,
+		})),
+		reviewQueueCards,
+		summary: plan.summary,
+	};
+}
+
+async function getLatestRatingByCardId(userId: string, cardIds: string[]) {
+	const latestRatingByCardId = new Map<string, ReviewRating>();
+	if (cardIds.length === 0) return latestRatingByCardId;
+
+	const db = await getDb();
+	const rows = await db
+		.select({
+			cardId: reviewLogs.cardId,
+			rating: reviewLogs.rating,
+		})
+		.from(reviewLogs)
+		.where(
+			and(eq(reviewLogs.userId, userId), inArray(reviewLogs.cardId, cardIds)),
+		)
+		.orderBy(desc(reviewLogs.review));
+
+	for (const row of rows) {
+		if (latestRatingByCardId.has(row.cardId)) continue;
+		latestRatingByCardId.set(row.cardId, row.rating as ReviewRating);
+	}
+
+	return latestRatingByCardId;
 }
 
 export async function listProblems(requestHeaders: Headers) {
@@ -141,6 +215,7 @@ export async function listProblems(requestHeaders: Headers) {
 			difficulty: problems.difficulty,
 			tags: problems.tags,
 			url: problems.url,
+			neetcodeUrl: problems.neetcodeUrl,
 			createdAt: problems.createdAt,
 			cardId: cards.id,
 			due: cards.due,
@@ -157,6 +232,41 @@ export async function listProblems(requestHeaders: Headers) {
 		...row,
 		tags: JSON.parse(row.tags) as string[],
 	}));
+}
+
+export async function updateProblemMeta(
+	requestHeaders: Headers,
+	problemId: string,
+	input: { url: string; neetcodeUrl: string | null; tags: string[] },
+) {
+	const userId = await getCurrentUserId(requestHeaders);
+	const db = await getDb();
+
+	const existing = await db
+		.select({ id: problems.id })
+		.from(problems)
+		.where(and(eq(problems.id, problemId), eq(problems.userId, userId)))
+		.limit(1);
+
+	if (!existing[0]) {
+		throw new Error("Problem not found.");
+	}
+
+	await db
+		.update(problems)
+		.set({
+			url: input.url,
+			neetcodeUrl: input.neetcodeUrl,
+			tags: JSON.stringify(input.tags),
+		})
+		.where(eq(problems.id, problemId));
+
+	return {
+		problemId,
+		url: input.url,
+		neetcodeUrl: input.neetcodeUrl,
+		tags: input.tags,
+	};
 }
 
 export async function addProblemFromUrl(requestHeaders: Headers, url: string) {
@@ -176,6 +286,7 @@ export async function addProblemFromUrl(requestHeaders: Headers, url: string) {
 	}
 
 	const metadata = await fetchLeetCodeQuestion(slug);
+	const neetcodeUrl = await getNeetcodeUrl(slug);
 	const problemId = nanoid();
 	const cardId = nanoid();
 	const ts = nowUnix();
@@ -184,32 +295,34 @@ export async function addProblemFromUrl(requestHeaders: Headers, url: string) {
 		metadata.difficulty,
 	);
 
-	await db.insert(problems).values({
-		id: problemId,
-		userId,
-		slug,
-		title: metadata.title,
-		difficulty: metadata.difficulty,
-		tags: JSON.stringify(metadata.tags),
-		url,
-		createdAt: ts,
-	});
-
-	await db.insert(cards).values({
-		id: cardId,
-		userId,
-		problemId,
-		due: startOfTomorrowUtcUnix(),
-		stability: baseCard.stability,
-		difficulty: baseCard.difficulty,
-		elapsedDays: baseCard.elapsed_days,
-		scheduledDays: baseCard.scheduled_days,
-		learningSteps: baseCard.learning_steps,
-		reps: baseCard.reps,
-		lapses: baseCard.lapses,
-		state: baseCard.state,
-		lastReview: null,
-	});
+	await db.batch([
+		db.insert(problems).values({
+			id: problemId,
+			userId,
+			slug,
+			title: metadata.title,
+			difficulty: metadata.difficulty,
+			tags: JSON.stringify(metadata.tags),
+			url,
+			neetcodeUrl,
+			createdAt: ts,
+		}),
+		db.insert(cards).values({
+			id: cardId,
+			userId,
+			problemId,
+			due: startOfTomorrowUtcUnix(),
+			stability: baseCard.stability,
+			difficulty: baseCard.difficulty,
+			elapsedDays: baseCard.elapsed_days,
+			scheduledDays: baseCard.scheduled_days,
+			learningSteps: baseCard.learning_steps,
+			reps: baseCard.reps,
+			lapses: baseCard.lapses,
+			state: baseCard.state,
+			lastReview: null,
+		}),
+	]);
 
 	return { cardId, created: true };
 }
@@ -227,6 +340,7 @@ export async function getReviewCard(requestHeaders: Headers, cardId: string) {
 			difficulty: problems.difficulty,
 			tags: problems.tags,
 			url: problems.url,
+			neetcodeUrl: problems.neetcodeUrl,
 			due: cards.due,
 			state: cards.state,
 			reps: cards.reps,
@@ -296,7 +410,7 @@ export async function submitReview(
 	const nextCard = next.card;
 	const reviewLog = next.log;
 
-	await Promise.all([
+	await db.batch([
 		db
 			.update(cards)
 			.set({

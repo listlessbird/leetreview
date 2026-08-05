@@ -143,6 +143,10 @@ code {
 	body {
 		@apply bg-background text-foreground;
 	}
+	::selection {
+		background-color: oklch(0.48 0.13 266.03);
+		color: var(--primary-foreground);
+	}
 }
 
 /* ── Berkeley Mono ──────────────────────────────── */

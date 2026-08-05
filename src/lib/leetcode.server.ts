@@ -1,6 +1,5 @@
 import "server-only";
-import { readFile } from "node:fs/promises";
-import path from "node:path";
+import leetcodeCacheData from "../../data/leetcode-cache.json";
 
 export function extractLeetCodeSlug(url: string) {
 	const parsed = new URL(url);
@@ -42,33 +41,14 @@ export type SearchExecutionMeta = {
 	result_count: number;
 };
 
-const DEFAULT_PROBLEMSET_CACHE_PATH = path.join(
-	process.cwd(),
-	"data",
-	"leetcode-cache.json",
-);
-
-function getProblemsetCachePath() {
-	const configuredPath = process.env.LEETCODE_CACHE_PATH?.trim();
-
-	if (!configuredPath) {
-		return DEFAULT_PROBLEMSET_CACHE_PATH;
-	}
-
-	return path.resolve(
-		/* turbopackIgnore: true */ process.cwd(),
-		configuredPath,
-	);
-}
-
-const PROBLEMSET_CACHE_PATH = getProblemsetCachePath();
-
 type CachedProblem = {
 	slug: string;
 	title: string;
 	difficulty: string;
 	tags: string[];
 };
+
+const leetcodeCache = leetcodeCacheData as CachedProblem[];
 
 const questionMetaCache = new Map<
 	string,
@@ -78,34 +58,6 @@ const questionMetaCache = new Map<
 		tags: string[];
 	}
 >();
-
-async function loadProblemsetIndex() {
-	try {
-		const fileContents = await readFile(PROBLEMSET_CACHE_PATH, "utf8");
-		const parsed = JSON.parse(fileContents) as CachedProblem[];
-		if (!Array.isArray(parsed) || parsed.length === 0) {
-			throw new Error("LeetCode cache file is empty.");
-		}
-		return parsed;
-	} catch (error) {
-		if (error instanceof Error && "code" in error && error.code === "ENOENT") {
-			throw new Error(
-				`LeetCode cache file not found at "${PROBLEMSET_CACHE_PATH}". Run "bun run leetcode:cache" first or set LEETCODE_CACHE_PATH.`,
-			);
-		}
-
-		throw error;
-	}
-}
-
-let problemsetIndexPromise: Promise<CachedProblem[]> | null = null;
-
-async function getProblemsetIndex(): Promise<CachedProblem[]> {
-	if (!problemsetIndexPromise) {
-		problemsetIndexPromise = loadProblemsetIndex();
-	}
-	return problemsetIndexPromise;
-}
 
 function toSearchResult(problem: CachedProblem): SearchResult {
 	return {
@@ -201,7 +153,7 @@ export async function searchLeetCodeProblemsImpl(queryInput: string): Promise<{
 	results: SearchResult[];
 	meta: SearchExecutionMeta;
 }> {
-	const index = await getProblemsetIndex();
+	const index = leetcodeCache;
 	const fromUrlSlug = tryExtractLeetCodeSlug(queryInput);
 	if (fromUrlSlug) {
 		const fromIndex = index.find((problem) => problem.slug === fromUrlSlug);

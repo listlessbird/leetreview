@@ -1,5 +1,6 @@
 "use client";
 
+import { useHotkey } from "@tanstack/react-hotkeys";
 import { useQuery } from "@tanstack/react-query";
 import {
 	type ColumnDef,
@@ -10,16 +11,21 @@ import {
 	type SortingState,
 	useReactTable,
 } from "@tanstack/react-table";
-import { Search } from "lucide-react";
+import { Search, Shuffle } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
 import { SiLeetcode } from "react-icons/si";
 
-import { useHotkey } from "@tanstack/react-hotkeys";
-
 import { AddProblemDialog } from "@/components/dashboard/AddProblemDialog";
+import { DashboardSettingsDialog } from "@/components/dashboard/DashboardSettingsDialog";
+import {
+	PlatformChoiceDialog,
+	RandomReviewSessionDialog,
+} from "@/components/dashboard/RandomReviewDialogs";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
+import { EditProblemButton } from "@/components/problems/EditProblemDialog";
+import { ReviewRowContent } from "@/components/review/ReviewRowContent";
 import { Badge } from "@/components/ui/badge";
 import { BadgeOverflow } from "@/components/ui/badge-overflow";
 import { Input } from "@/components/ui/input";
@@ -29,31 +35,41 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { ReviewRowContent } from "@/components/review/ReviewRowContent";
 import { useAdaptiveNow } from "@/hooks/use-adaptive-now";
+import { useRandomReviewSession } from "@/hooks/use-random-review-session";
 import { useRowNavHotkeys } from "@/hooks/use-row-hotkeys";
+import type { DailyReviewPlanSummary } from "@/lib/daily-review-plan";
 import { formatDueExact, formatDueRelative } from "@/lib/due-date";
 import { HOTKEY_LABELS, HOTKEYS } from "@/lib/hotkeys";
 import {
 	type DueCard as DashboardCard,
+	type DueCardsResponse,
 	fetchDueCards,
 	reviewQueryKeys,
 } from "@/lib/review.functions";
 
-export function DashboardPage() {
+export function DashboardPage({
+	initialDailyReviewPlan,
+}: {
+	initialDailyReviewPlan?: DueCardsResponse;
+}) {
 	const [addDialogOpen, setAddDialogOpen] = React.useState(false);
 	const [reviewCardId, setReviewCardId] = React.useState<string | null>(null);
 	const searchInputRef = React.useRef<HTMLInputElement>(null);
 	const [search, setSearch] = React.useState("");
 	const {
-		data: dueCards = [],
+		data: dailyReviewPlan,
 		error,
 		isLoading,
 	} = useQuery({
 		queryKey: reviewQueryKeys.dueCards,
 		queryFn: fetchDueCards,
+		initialData: initialDailyReviewPlan,
 		staleTime: 30_000,
 	});
+	const plannedCards = dailyReviewPlan?.cards ?? [];
+	const reviewQueueCards = dailyReviewPlan?.reviewQueueCards ?? plannedCards;
+	const planSummary = dailyReviewPlan?.summary ?? null;
 	const deferredSearch = React.useDeferredValue(search.trim().toLowerCase());
 	const [sorting, setSorting] = React.useState<SortingState>([
 		{ id: "difficulty", desc: true },
@@ -65,22 +81,22 @@ export function DashboardPage() {
 	});
 	const searchableRows = React.useMemo(
 		() =>
-			dueCards.map((card) => ({
+			plannedCards.map((card) => ({
 				card,
 				searchText:
 					`${card.title} ${card.difficulty} ${card.tags.join(" ")}`.toLowerCase(),
 			})),
-		[dueCards],
+		[plannedCards],
 	);
-	const filteredDueCards = React.useMemo(() => {
-		if (!deferredSearch) return dueCards;
+	const filteredPlannedCards = React.useMemo(() => {
+		if (!deferredSearch) return plannedCards;
 		return searchableRows.flatMap(({ searchText, card }) =>
 			searchText.includes(deferredSearch) ? [card] : [],
 		);
-	}, [deferredSearch, dueCards, searchableRows]);
+	}, [deferredSearch, plannedCards, searchableRows]);
 	const dueUnixList = React.useMemo(
-		() => filteredDueCards.map((card) => card.due),
-		[filteredDueCards],
+		() => filteredPlannedCards.map((card) => card.due),
+		[filteredPlannedCards],
 	);
 	const nowMs = useAdaptiveNow(dueUnixList);
 
@@ -92,10 +108,6 @@ export function DashboardPage() {
 	}
 
 	// ── Hotkeys ────────────────────────────────────────────────────────────
-	useHotkey(HOTKEYS.addProblem, () => setAddDialogOpen(true), {
-		ignoreInputs: true,
-		meta: { name: "Add problem", description: "Open the add problem dialog" },
-	});
 	useHotkey(
 		HOTKEYS.searchFocus,
 		() => {
@@ -119,7 +131,9 @@ export function DashboardPage() {
 					const num =
 						table.getRowModel().rows.findIndex((r) => r.id === row.id) + 1;
 					return (
-						<Kbd className="border border-white/15 bg-white/8 text-[10px] text-white/45">{num}</Kbd>
+						<Kbd className="border border-white/15 bg-white/8 text-[10px] text-white/45">
+							{num}
+						</Kbd>
 					);
 				},
 				meta: { label: "#" },
@@ -131,8 +145,16 @@ export function DashboardPage() {
 					<DataTableColumnHeader column={column} label="Title" />
 				),
 				cell: ({ row }) => (
-					<div className="max-w-[30rem] truncate font-medium">
-						{row.original.title}
+					<div className="group/title flex max-w-[30rem] items-center gap-2">
+						<span className="truncate font-medium">{row.original.title}</span>
+						<EditProblemButton
+							problemId={row.original.problemId}
+							title={row.original.title}
+							url={row.original.url}
+							neetcodeUrl={row.original.neetcodeUrl}
+							tags={row.original.tags}
+							className="opacity-0 transition-opacity group-hover/title:opacity-100"
+						/>
 					</div>
 				),
 			},
@@ -142,15 +164,30 @@ export function DashboardPage() {
 				enableHiding: false,
 				header: () => <span className="sr-only">Open</span>,
 				cell: ({ row }) => (
-					<a
-						href={row.original.url}
-						target="_blank"
-						rel="noopener noreferrer"
-						aria-label={`Open ${row.original.title} on LeetCode`}
-						className="inline-flex size-8 items-center justify-center rounded border border-white/15 text-white/70 transition-colors duration-150 ease-out hover:border-white/30 hover:bg-white/10 hover:text-[#FFA116] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30"
-					>
-						<SiLeetcode className="size-3.5" />
-					</a>
+					<div className="flex items-center gap-1.5">
+						<a
+							href={row.original.url}
+							target="_blank"
+							rel="noopener noreferrer"
+							aria-label={`Open ${row.original.title} on LeetCode`}
+							className="inline-flex size-8 shrink-0 items-center justify-center rounded border border-white/15 text-white/70 transition-colors duration-150 ease-out hover:border-white/30 hover:bg-white/10 hover:text-[#FFA116] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30"
+						>
+							<SiLeetcode className="size-3.5" />
+						</a>
+						{row.original.neetcodeUrl && (
+							<a
+								href={row.original.neetcodeUrl}
+								target="_blank"
+								rel="noopener noreferrer"
+								aria-label={`Open ${row.original.title} on NeetCode`}
+								className="inline-flex size-8 shrink-0 items-center justify-center rounded border border-white/15 text-white/70 transition-colors duration-150 ease-out hover:border-white/30 hover:bg-white/10 hover:text-[#10b981] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30"
+							>
+								<span className="text-[10px] font-bold tracking-tighter leading-none mt-[1px]">
+									NC
+								</span>
+							</a>
+						)}
+					</div>
 				),
 				meta: {
 					label: "Open",
@@ -194,9 +231,13 @@ export function DashboardPage() {
 				cell: ({ row }) => (
 					<button
 						type="button"
-						onClick={() => setReviewCardId(
-							reviewCardId === row.original.cardId ? null : row.original.cardId
-						)}
+						onClick={() =>
+							setReviewCardId(
+								reviewCardId === row.original.cardId
+									? null
+									: row.original.cardId,
+							)
+						}
 						className="transform-gpu rounded border border-white/20 px-3 py-2 text-sm transition-colors duration-150 ease-out hover:bg-white/10 active:scale-[0.97] motion-reduce:transform-none motion-reduce:transition-none"
 					>
 						Review
@@ -208,7 +249,7 @@ export function DashboardPage() {
 	);
 
 	const table = useReactTable({
-		data: filteredDueCards,
+		data: filteredPlannedCards,
 		columns,
 		state: {
 			sorting,
@@ -222,28 +263,68 @@ export function DashboardPage() {
 		getSortedRowModel: getSortedRowModel(),
 		getPaginationRowModel: getPaginationRowModel(),
 	});
+	const handleRandomReviewSessionStart = React.useCallback(() => {
+		setReviewCardId(null);
+	}, []);
+	const randomReview = useRandomReviewSession({
+		cards: filteredPlannedCards,
+		sessionCards: reviewQueueCards,
+		isLoading,
+		isBlocked: addDialogOpen,
+		hasSearch: Boolean(deferredSearch),
+		onSessionStart: handleRandomReviewSessionStart,
+	});
+	useHotkey(
+		HOTKEYS.addProblem,
+		() => {
+			if (!randomReview.isActive) setAddDialogOpen(true);
+		},
+		{
+			ignoreInputs: true,
+			meta: { name: "Add problem", description: "Open the add problem dialog" },
+		},
+	);
 
-	const pageRows = table
-		.getRowModel()
-		.rows.map((row) => ({
-			onSelect: () => setReviewCardId(
+	const pageRows = table.getRowModel().rows.map((row) => ({
+		onSelect: () =>
+			setReviewCardId(
 				reviewCardId === row.original.cardId ? null : row.original.cardId,
 			),
-		}));
-	useRowNavHotkeys(pageRows);
+	}));
+	useRowNavHotkeys(pageRows, !randomReview.isActive);
 
 	return (
 		<div className="min-h-screen bg-[#07070e] p-8 font-berkeley text-[#ededf5]">
 			<div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
 				<header className="flex flex-wrap items-center justify-between gap-3">
 					<h1 className="text-2xl font-bold tracking-tight">
-						Today's Due Reviews
+						Daily Review Plan
 					</h1>
 					<div className="flex items-center gap-3 text-sm">
+						<button
+							type="button"
+							onClick={randomReview.start}
+							disabled={
+								isLoading || randomReview.isActive || plannedCards.length === 0
+							}
+							className="group inline-flex transform-gpu items-center gap-2 rounded border border-emerald-500/30 bg-emerald-500/[0.07] px-3 py-1.5 text-sm text-[#ededf5] transition-all duration-150 ease-out hover:border-emerald-400/50 hover:bg-emerald-500/15 active:scale-[0.975] disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transform-none"
+						>
+							<Shuffle className="size-4 text-emerald-300/80" />
+							Random
+							<Kbd className="border-emerald-400/30 bg-emerald-500/10 text-emerald-300/70 opacity-80">
+								{HOTKEY_LABELS.randomReview[0]}
+							</Kbd>
+						</button>
 						<AddProblemDialog
-						open={addDialogOpen}
-						onOpenChange={setAddDialogOpen}
-					/>
+							open={addDialogOpen}
+							onOpenChange={setAddDialogOpen}
+						/>
+						<DashboardSettingsDialog
+							platformPreference={randomReview.settings.platformPreference}
+							onPlatformPreferenceChange={
+								randomReview.settings.setPlatformPreference
+							}
+						/>
 						<Link
 							className="underline decoration-white/30 underline-offset-4"
 							href="/problems"
@@ -253,22 +334,29 @@ export function DashboardPage() {
 					</div>
 				</header>
 
+				{randomReview.notice ? (
+					<p className="rounded border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-white/65">
+						{randomReview.notice}
+					</p>
+				) : null}
+
 				{isLoading ? (
 					<div className="rounded border border-white/10 bg-white/5 p-5 text-sm text-white/70">
-						Loading due reviews...
+						Loading daily review plan...
 					</div>
 				) : error ? (
 					<div className="rounded border border-red-500/20 bg-red-500/6 p-5 text-sm text-red-200">
 						{error instanceof Error
 							? error.message
-							: "Could not load due reviews."}
+							: "Could not load daily review plan."}
 					</div>
-				) : dueCards.length === 0 ? (
+				) : plannedCards.length === 0 ? (
 					<div className="rounded border border-white/10 bg-white/5 p-5 text-sm text-white/70">
-						No problems are due right now.
+						No reviews are ready right now.
 					</div>
 				) : (
 					<>
+						{planSummary ? <PlanSummaryBar summary={planSummary} /> : null}
 						<div className="flex items-center justify-between gap-3">
 							<div className="relative w-full max-w-sm">
 								<Search className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-2.5 size-4 text-white/45" />
@@ -282,7 +370,10 @@ export function DashboardPage() {
 								/>
 								<KbdGroup className="-translate-y-1/2 pointer-events-none absolute top-1/2 right-2">
 									{HOTKEY_LABELS.searchFocus.map((key) => (
-										<Kbd key={key} className="border border-white/15 bg-white/8 text-[10px] text-white/50">
+										<Kbd
+											key={key}
+											className="border border-white/15 bg-white/8 text-[10px] text-white/50"
+										>
 											{key}
 										</Kbd>
 									))}
@@ -290,8 +381,8 @@ export function DashboardPage() {
 							</div>
 							{deferredSearch ? (
 								<p className="whitespace-nowrap text-sm text-white/60">
-									{filteredDueCards.length} result
-									{filteredDueCards.length === 1 ? "" : "s"}
+									{filteredPlannedCards.length} result
+									{filteredPlannedCards.length === 1 ? "" : "s"}
 								</p>
 							) : null}
 						</div>
@@ -310,6 +401,50 @@ export function DashboardPage() {
 					</>
 				)}
 			</div>
+			<PlatformChoiceDialog
+				problem={randomReview.platformChoice.problem}
+				remember={randomReview.platformChoice.remember}
+				onRememberChange={randomReview.platformChoice.setRemember}
+				onChoose={randomReview.platformChoice.choose}
+				onCancel={randomReview.platformChoice.cancel}
+			/>
+			<RandomReviewSessionDialog
+				session={randomReview.sessionDialog.session}
+				isSubmitting={randomReview.sessionDialog.isSubmitting}
+				error={randomReview.sessionDialog.error}
+				onRate={(rating) => void randomReview.sessionDialog.rate(rating)}
+				onOpenAgain={randomReview.sessionDialog.openAgain}
+				onSkip={randomReview.sessionDialog.skip}
+			/>
+		</div>
+	);
+}
+
+function PlanSummaryBar({ summary }: { summary: DailyReviewPlanSummary }) {
+	const stats = [
+		{
+			label: "Planned",
+			value: `${summary.plannedCount}/${summary.dailyReviewCount}`,
+		},
+		{ label: "Review Queue", value: summary.reviewQueueCount },
+		{ label: "Backlog waiting", value: summary.backlogNotPlannedCount },
+		{ label: "Due", value: summary.plannedDueCount },
+		{ label: "Low-practice", value: summary.plannedLowPracticeCount },
+		{ label: "High-risk", value: summary.plannedHighRiskCount },
+	];
+
+	return (
+		<div className="grid gap-2 rounded border border-white/10 bg-white/[0.035] p-3 sm:grid-cols-2 lg:grid-cols-6">
+			{stats.map((stat) => (
+				<div key={stat.label} className="min-w-0">
+					<div className="text-[11px] uppercase tracking-wide text-white/45">
+						{stat.label}
+					</div>
+					<div className="mt-1 truncate font-semibold text-lg text-[#ededf5]">
+						{stat.value}
+					</div>
+				</div>
+			))}
 		</div>
 	);
 }

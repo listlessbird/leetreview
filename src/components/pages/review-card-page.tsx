@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { EditProblemButton } from "@/components/problems/EditProblemDialog";
 import {
 	fetchReviewCard,
 	reviewQueryKeys,
@@ -74,7 +75,16 @@ export function ReviewCardPage({ cardId }: { cardId: string }) {
 	return (
 		<div className="min-h-screen bg-[#07070e] p-8 font-berkeley text-[#ededf5]">
 			<div className="mx-auto w-full max-w-3xl rounded border border-white/10 bg-white/5 p-6">
-				<h1 className="text-2xl font-bold tracking-tight">{card.title}</h1>
+				<div className="flex items-center gap-3">
+					<h1 className="text-2xl font-bold tracking-tight">{card.title}</h1>
+					<EditProblemButton
+						problemId={card.problemId}
+						title={card.title}
+						url={card.url}
+						neetcodeUrl={card.neetcodeUrl}
+						tags={card.tags}
+					/>
+				</div>
 				<p className="mt-1 text-sm text-white/65">
 					Difficulty: {card.difficulty}
 				</p>
@@ -106,33 +116,45 @@ export function ReviewCardPage({ cardId }: { cardId: string }) {
 						type="button"
 						onClick={() => void handleRate(1)}
 						disabled={isSubmitting}
-						className="rounded border border-white/20 px-3 py-2 text-sm hover:bg-white/10 disabled:opacity-60"
+						className="flex flex-col items-center gap-1 rounded border border-white/20 px-3 py-2.5 text-sm hover:bg-white/10 disabled:opacity-60"
 					>
 						Again
+						<span className="text-[10px] font-normal text-white/35">
+							couldn&apos;t derive without major hint
+						</span>
 					</button>
 					<button
 						type="button"
 						onClick={() => void handleRate(2)}
 						disabled={isSubmitting}
-						className="rounded border border-white/20 px-3 py-2 text-sm hover:bg-white/10 disabled:opacity-60"
+						className="flex flex-col items-center gap-1 rounded border border-white/20 px-3 py-2.5 text-sm hover:bg-white/10 disabled:opacity-60"
 					>
 						Hard
+						<span className="text-[10px] font-normal text-white/35">
+							solved, but slow or shaky
+						</span>
 					</button>
 					<button
 						type="button"
 						onClick={() => void handleRate(3)}
 						disabled={isSubmitting}
-						className="rounded border border-white/20 px-3 py-2 text-sm hover:bg-white/10 disabled:opacity-60"
+						className="flex flex-col items-center gap-1 rounded border border-white/20 px-3 py-2.5 text-sm hover:bg-white/10 disabled:opacity-60"
 					>
 						Good
+						<span className="text-[10px] font-normal text-white/35">
+							solved cleanly after thinking
+						</span>
 					</button>
 					<button
 						type="button"
 						onClick={() => void handleRate(4)}
 						disabled={isSubmitting}
-						className="rounded border border-white/20 px-3 py-2 text-sm hover:bg-white/10 disabled:opacity-60"
+						className="flex flex-col items-center gap-1 rounded border border-white/20 px-3 py-2.5 text-sm hover:bg-white/10 disabled:opacity-60"
 					>
 						Easy
+						<span className="text-[10px] font-normal text-white/35">
+							recognized pattern, can code it
+						</span>
 					</button>
 				</div>
 				{error ? <p className="mt-3 text-sm text-red-300">{error}</p> : null}

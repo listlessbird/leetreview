@@ -20,6 +20,7 @@ export const problems = sqliteTable(
 		difficulty: text("difficulty").notNull(),
 		tags: text("tags").notNull(),
 		url: text("url").notNull(),
+		neetcodeUrl: text("neetcode_url"),
 		createdAt: integer("created_at").notNull(),
 	},
 	(table) => [
