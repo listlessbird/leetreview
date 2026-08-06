@@ -81,6 +81,15 @@ export const reviewLogs = sqliteTable(
 	(table) => [
 		index("review_logs_card_id_idx").on(table.cardId),
 		index("review_logs_user_review_idx").on(table.userId, table.review),
+		// covers the latest-rating-per-card lookup: user_id narrows, card_id
+		// gives the grouping in index order, review/rating are read straight
+		// out of the index so the table is never touched.
+		index("review_logs_user_card_review_idx").on(
+			table.userId,
+			table.cardId,
+			table.review,
+			table.rating,
+		),
 	],
 );
 

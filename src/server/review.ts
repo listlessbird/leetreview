@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, desc, eq, inArray, isNull, lt, lte, or } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, lt, lte, max, or } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import {
 	type Card,
@@ -135,10 +135,10 @@ export async function getDueCards(requestHeaders: Headers) {
 		)
 		.orderBy(asc(cards.due));
 
-	const latestRatingByCardId = await getLatestRatingByCardId(
-		userId,
-		rows.map((row) => row.cardId),
-	);
+	const latestRatingByCardId =
+		rows.length === 0
+			? new Map<string, ReviewRating>()
+			: await getLatestRatingByCardId(userId);
 	const plan = buildDailyReviewPlan({
 		reviewQueue: rows.map((row) => ({
 			...row,
@@ -179,28 +179,30 @@ export async function getDueCards(requestHeaders: Headers) {
 	};
 }
 
-async function getLatestRatingByCardId(userId: string, cardIds: string[]) {
-	const latestRatingByCardId = new Map<string, ReviewRating>();
-	if (cardIds.length === 0) return latestRatingByCardId;
-
+// one row per card, holding the rating of that card's newest log.
+//
+// `rating` is a bare column next to `max(review)`: sqlite guarantees bare
+// columns come from the row that produced the min/max when the query has
+// exactly one such aggregate, so this is the latest rating without a
+// self-join or a window function.
+//
+// the user id is the only bound parameter, which keeps this under d1's limit
+// of 100 parameters per statement no matter how many cards a user has.
+async function getLatestRatingByCardId(userId: string) {
 	const db = await getDb();
 	const rows = await db
 		.select({
 			cardId: reviewLogs.cardId,
 			rating: reviewLogs.rating,
+			latestReview: max(reviewLogs.review),
 		})
 		.from(reviewLogs)
-		.where(
-			and(eq(reviewLogs.userId, userId), inArray(reviewLogs.cardId, cardIds)),
-		)
-		.orderBy(desc(reviewLogs.review));
+		.where(eq(reviewLogs.userId, userId))
+		.groupBy(reviewLogs.cardId);
 
-	for (const row of rows) {
-		if (latestRatingByCardId.has(row.cardId)) continue;
-		latestRatingByCardId.set(row.cardId, row.rating as ReviewRating);
-	}
-
-	return latestRatingByCardId;
+	return new Map(
+		rows.map((row) => [row.cardId, row.rating as ReviewRating] as const),
+	);
 }
 
 export async function listProblems(requestHeaders: Headers) {
