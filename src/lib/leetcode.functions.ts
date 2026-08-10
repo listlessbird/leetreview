@@ -7,7 +7,9 @@ const searchInput = z.object({
 type SearchResult = {
 	title: string;
 	slug: string;
+	frontendId: string | null;
 	difficulty: string | null;
+	paidOnly: boolean;
 	url: string;
 };
 

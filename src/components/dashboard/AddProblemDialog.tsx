@@ -22,7 +22,9 @@ import { addProblemFromUrl, reviewQueryKeys } from "@/lib/review.functions";
 type SearchResult = {
 	title: string;
 	slug: string;
+	frontendId: string | null;
 	difficulty: string | null;
+	paidOnly: boolean;
 	url: string;
 };
 
@@ -45,11 +47,21 @@ function ResultItem({
 		<li className="rounded border border-white/10 bg-white/3 p-3 transition-colors duration-150 ease-out hover:bg-white/[0.07]">
 			<div className="flex items-center justify-between gap-4">
 				<div className="min-w-0">
-					<p className="text-sm font-semibold leading-snug">{result.title}</p>
+					<p className="text-sm font-semibold leading-snug">
+						{result.frontendId ? (
+							<span className="text-white/40">{result.frontendId}. </span>
+						) : null}
+						{result.title}
+					</p>
 					<div className="mt-0.5 flex items-center gap-2 text-xs text-white/40">
 						{result.difficulty ? (
 							<span className="uppercase tracking-wide">
 								{result.difficulty}
+							</span>
+						) : null}
+						{result.paidOnly ? (
+							<span className="uppercase tracking-wide text-amber-400/70">
+								Premium
 							</span>
 						) : null}
 						<span className="truncate">{result.slug}</span>

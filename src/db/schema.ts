@@ -93,9 +93,24 @@ export const reviewLogs = sqliteTable(
 	],
 );
 
+// the LeetCode daily challenge, ingested once a day by the cron job. global
+// rather than per-user: the same problem is the daily for everyone.
+export const dailyChallenges = sqliteTable("daily_challenges", {
+	// YYYY-MM-DD, as reported by LeetCode (UTC)
+	date: text("date").primaryKey(),
+	slug: text("slug").notNull(),
+	title: text("title").notNull(),
+	frontendId: text("frontend_id"),
+	difficulty: text("difficulty").notNull(),
+	tags: text("tags").notNull(),
+	url: text("url").notNull(),
+	ingestedAt: integer("ingested_at").notNull(),
+});
+
 export const schema = {
 	...authSchema,
 	problems,
 	cards,
 	reviewLogs,
+	dailyChallenges,
 } as const;

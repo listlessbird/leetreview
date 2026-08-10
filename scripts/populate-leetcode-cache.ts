@@ -27,6 +27,8 @@ const PROBLEMSET_QUERY = `
 			questions {
 				titleSlug
 				title
+				questionFrontendId
+				paidOnly
 				difficulty
 				topicTags {
 					name
@@ -41,6 +43,8 @@ const PROBLEMSET_QUERY = `
 type Question = {
 	titleSlug: string;
 	title: string;
+	questionFrontendId: string;
+	paidOnly: boolean;
 	difficulty: string;
 	topicTags: { name: string }[];
 };
@@ -132,12 +136,21 @@ async function fetchAllProblems(): Promise<Question[]> {
 }
 
 async function main() {
+	if (process.env.LEETCODE_SKIP_INDEX_REFRESH?.trim() === "1") {
+		console.log(
+			"LEETCODE_SKIP_INDEX_REFRESH=1, keeping the committed index as-is.",
+		);
+		return;
+	}
+
 	const problems = await fetchAllProblems();
 
 	const index = problems.map((q) => ({
 		slug: q.titleSlug,
 		title: q.title,
+		frontendId: q.questionFrontendId,
 		difficulty: q.difficulty,
+		paidOnly: q.paidOnly,
 		tags: q.topicTags.map((t) => t.name),
 	}));
 

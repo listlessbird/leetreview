@@ -31,5 +31,10 @@
 	},
 	"editor.codeActionsOnSave": {
 		"source.organizeImports.biome": "explicit"
+	},
+	"workbench.colorCustomizations": {
+		"statusBar.background": "#993385",
+		"statusBar.foreground": "#ffffff",
+		"sash.hoverBorder": "#993385"
 	}
 }

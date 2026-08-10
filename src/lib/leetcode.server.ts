@@ -27,10 +27,19 @@ function normalizeForMatch(value: string) {
 	return value.trim().toLowerCase().replace(/\s+/g, "-");
 }
 
+// the problemset index reports EASY/MEDIUM/HARD while the single-question
+// query reports Easy/Medium/Hard. everything downstream (difficulty sorting,
+// stored problem rows) assumes the uppercase form.
+function normalizeDifficulty(value: string) {
+	return value.trim().toUpperCase();
+}
+
 export type SearchResult = {
 	title: string;
 	slug: string;
+	frontendId: string | null;
 	difficulty: string | null;
+	paidOnly: boolean;
 	url: string;
 };
 
@@ -44,7 +53,10 @@ export type SearchExecutionMeta = {
 type CachedProblem = {
 	slug: string;
 	title: string;
+	// absent on index files generated before frontend ids were captured
+	frontendId?: string;
 	difficulty: string;
+	paidOnly?: boolean;
 	tags: string[];
 };
 
@@ -54,7 +66,9 @@ const questionMetaCache = new Map<
 	string,
 	{
 		title: string;
+		frontendId: string | null;
 		difficulty: string;
+		paidOnly: boolean;
 		tags: string[];
 	}
 >();
@@ -63,7 +77,9 @@ function toSearchResult(problem: CachedProblem): SearchResult {
 	return {
 		title: problem.title,
 		slug: problem.slug,
+		frontendId: problem.frontendId ?? null,
 		difficulty: problem.difficulty,
+		paidOnly: problem.paidOnly ?? false,
 		url: `https://leetcode.com/problems/${problem.slug}/`,
 	};
 }
@@ -79,6 +95,8 @@ function rankResults(queryInput: string, all: CachedProblem[]): SearchResult[] {
 			const slug = problem.slug.toLowerCase();
 
 			let score = 0;
+			// problems are commonly referred to by number, especially dailies
+			if (problem.frontendId && problem.frontendId === query) score += 250;
 			if (slug === slugQuery || title === query) score += 200;
 			if (slug.startsWith(slugQuery)) score += 120;
 			if (title.startsWith(query)) score += 100;
@@ -116,7 +134,7 @@ export async function fetchLeetCodeQuestion(slug: string) {
 		},
 		body: JSON.stringify({
 			query:
-				"query questionData($titleSlug: String!) { question(titleSlug: $titleSlug) { title difficulty topicTags { name } } }",
+				"query questionData($titleSlug: String!) { question(titleSlug: $titleSlug) { questionFrontendId title difficulty isPaidOnly topicTags { name } } }",
 			variables: { titleSlug: slugKey },
 		}),
 	});
@@ -128,8 +146,10 @@ export async function fetchLeetCodeQuestion(slug: string) {
 	const payload = (await response.json()) as {
 		data?: {
 			question?: {
+				questionFrontendId: string | null;
 				title: string;
 				difficulty: string;
+				isPaidOnly: boolean;
 				topicTags: { name: string }[];
 			} | null;
 		};
@@ -142,7 +162,9 @@ export async function fetchLeetCodeQuestion(slug: string) {
 
 	const result = {
 		title: question.title,
-		difficulty: question.difficulty,
+		frontendId: question.questionFrontendId ?? null,
+		difficulty: normalizeDifficulty(question.difficulty),
+		paidOnly: question.isPaidOnly,
 		tags: question.topicTags.map((tag) => tag.name),
 	};
 	questionMetaCache.set(slugKey, result);
@@ -175,7 +197,9 @@ export async function searchLeetCodeProblemsImpl(queryInput: string): Promise<{
 			{
 				title: question.title,
 				slug: fromUrlSlug,
+				frontendId: question.frontendId,
 				difficulty: question.difficulty,
+				paidOnly: question.paidOnly,
 				url: `https://leetcode.com/problems/${fromUrlSlug}/`,
 			},
 		] satisfies SearchResult[];

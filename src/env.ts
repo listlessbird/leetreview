@@ -17,6 +17,8 @@ function buildEnv() {
 			D1_ACCOUNT_ID: z.string().min(1).optional(),
 			D1_DATABASE_ID: z.string().min(1).optional(),
 			D1_API_TOKEN: z.string().min(1).optional(),
+			CRON_SECRET: z.string().min(16).optional(),
+			VERCEL_DEPLOY_HOOK_URL: z.string().url().optional(),
 		},
 		clientPrefix: "NEXT_PUBLIC_",
 		client: {

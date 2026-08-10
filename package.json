@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "tsx scripts/populate-leetcode-cache.ts || true && next build",
     "start": "next start",
     "preview": "next build && next start",
     "test": "vitest run",
