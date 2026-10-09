@@ -6,29 +6,29 @@ a personal spaced repetition app for reviewing lc problems. Add problems, let [F
 
 ```bash
 # Development
-bun dev              # start dev server on :3000
-bun run build        # production build
-bun run preview      # build + start the production server locally
+pnpm dev              # start dev server on :3000
+pnpm build        # production build
+pnpm preview      # build + start the production server locally
 
 # Auth
-bun run auth:generate   # generate Better Auth schema → src/db/auth.schema.ts
-bun run auth:migrate    # run Better Auth migrations via CLI
+pnpm auth:generate   # generate Better Auth schema → src/db/auth.schema.ts
+pnpm auth:migrate    # run Better Auth migrations via CLI
 
 # Database
-bun run db:generate  # generate SQL migrations from schema
-bun run db:migrate   # apply generated migrations to the active database target
-bun run db:push      # push schema directly to the active database target
-bun run db:pull      # pull schema from the active database target
-bun run db:studio    # open Drizzle Studio
+pnpm db:generate  # generate SQL migrations from schema
+pnpm db:migrate   # apply generated migrations to the active database target
+pnpm db:push      # push schema directly to the active database target
+pnpm db:pull      # pull schema from the active database target
+pnpm db:studio    # open Drizzle Studio
 
 # LeetCode search cache
-bun run leetcode:cache # write a local search index to ./data/leetcode-cache.json
+pnpm leetcode:cache # write a local search index to ./data/leetcode-cache.json
 
 # Code quality
-bun run lint         # biome lint
-bun run format       # biome format
-bun run check        # biome check (lint + format)
-bun run test         # vitest run
+pnpm lint         # biome lint
+pnpm format       # biome format
+pnpm check        # biome check (lint + format)
+pnpm test         # vitest run
 ```
 
 ## Environment
@@ -58,7 +58,7 @@ Database mode defaults to local SQLite in development. To point the app and Driz
 Typical setup:
 
 ```bash
-bun run leetcode:cache
-bun run db:migrate
-bun dev
+pnpm leetcode:cache
+pnpm db:migrate
+pnpm dev
 ```
