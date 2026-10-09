@@ -133,6 +133,7 @@ export function ProblemsPage() {
 							title={row.original.title}
 							url={row.original.url}
 							neetcodeUrl={row.original.neetcodeUrl}
+							notes={row.original.notes}
 							tags={row.original.tags}
 							className="opacity-0 transition-opacity group-hover/title:opacity-100"
 						/>
@@ -322,6 +323,7 @@ export function ProblemsPage() {
 						renderExpandedRow={(row) => (
 							<ReviewRowContent
 								cardId={row.original.cardId}
+								notes={row.original.notes}
 								onClose={() => setReviewCardId(null)}
 							/>
 						)}

@@ -4,8 +4,7 @@ import {
 	type DailyReviewPlanCandidate,
 } from "./daily-review-plan";
 
-const NOW_UNIX = Date.UTC(2026, 3, 29, 12) / 1000;
-const TODAY_UNIX = Date.UTC(2026, 3, 29) / 1000;
+const NOW_UNIX = Date.UTC(2026, 9, 9, 12) / 1000;
 const DAY_SECONDS = 24 * 60 * 60;
 
 function candidate(
@@ -14,183 +13,70 @@ function candidate(
 ): DailyReviewPlanCandidate {
 	return {
 		cardId,
-		due: TODAY_UNIX,
-		createdAt: TODAY_UNIX - 10 * DAY_SECONDS,
+		createdAt: NOW_UNIX - 60 * DAY_SECONDS,
 		reps: 3,
-		lapses: 0,
-		difficulty: "Medium",
-		latestRating: 3,
+		retrievability: 0.6,
 		...overrides,
 	};
 }
 
+function plannedIds(reviewQueue: DailyReviewPlanCandidate[], count: number) {
+	return buildDailyReviewPlan({
+		reviewQueue,
+		nowUnix: NOW_UNIX,
+		dailyReviewCount: count,
+	}).cards.map((card) => card.cardId);
+}
+
 describe("buildDailyReviewPlan", () => {
-	it("caps the Daily Review Plan and reports Backlog left outside the plan", () => {
-		const reviewQueue = Array.from({ length: 14 }, (_, index) =>
-			candidate(`card-${index}`, {
-				due: TODAY_UNIX - (index + 1) * DAY_SECONDS,
-			}),
+	it("caps the plan and reports what is left waiting", () => {
+		const reviewQueue = Array.from({ length: 5 }, (_, index) =>
+			candidate(`card-${index}`),
 		);
 
 		const plan = buildDailyReviewPlan({
 			reviewQueue,
-			nowUnix: NOW_UNIX,
-			dailyReviewCount: 12,
-		});
-
-		expect(plan.cards).toHaveLength(12);
-		expect(plan.summary).toMatchObject({
-			dailyReviewCount: 12,
-			plannedCount: 12,
-			reviewQueueCount: 14,
-			backlogCount: 14,
-			backlogNotPlannedCount: 2,
-		});
-	});
-
-	it("returns the full Review Queue when it fits under the Daily Review Count", () => {
-		const reviewQueue = [
-			candidate("card-1"),
-			candidate("card-2"),
-			candidate("card-3"),
-		];
-
-		const plan = buildDailyReviewPlan({
-			reviewQueue,
-			nowUnix: NOW_UNIX,
-			dailyReviewCount: 12,
-		});
-
-		expect(plan.cards.map((card) => card.cardId)).toEqual([
-			"card-1",
-			"card-2",
-			"card-3",
-		]);
-		expect(plan.summary.plannedCount).toBe(3);
-	});
-
-	it("distinguishes Fresh Problems from Neglected Problems at the three-day threshold", () => {
-		const plan = buildDailyReviewPlan({
-			reviewQueue: [
-				candidate("fresh", {
-					createdAt: TODAY_UNIX - 3 * DAY_SECONDS,
-					reps: 0,
-				}),
-				candidate("neglected", {
-					createdAt: TODAY_UNIX - 4 * DAY_SECONDS,
-					reps: 0,
-				}),
-			],
-			nowUnix: NOW_UNIX,
-			dailyReviewCount: 2,
-		});
-
-		expect(plan.cards.map((card) => card.cardId)).toEqual([
-			"neglected",
-			"fresh",
-		]);
-		expect(plan.summary.plannedNeglectedCount).toBe(1);
-	});
-
-	it("selects each problem only once when categories overlap", () => {
-		const overlapping = candidate("overlap", {
-			due: TODAY_UNIX - 5 * DAY_SECONDS,
-			reps: 2,
-			lapses: 1,
-			latestRating: 1,
-		});
-
-		const plan = buildDailyReviewPlan({
-			reviewQueue: [overlapping],
-			nowUnix: NOW_UNIX,
-			dailyReviewCount: 12,
-		});
-
-		expect(plan.cards.map((card) => card.cardId)).toEqual(["overlap"]);
-		expect(plan.summary).toMatchObject({
-			plannedCount: 1,
-			plannedBacklogCount: 1,
-			plannedLowPracticeCount: 1,
-			plannedHighRiskCount: 1,
-		});
-	});
-
-	it("protects Due Problems when Backlog is large", () => {
-		const backlog = Array.from({ length: 12 }, (_, index) =>
-			candidate(`backlog-${index}`, {
-				due: TODAY_UNIX - (index + 1) * DAY_SECONDS,
-				reps: 4,
-			}),
-		);
-		const dueToday = Array.from({ length: 3 }, (_, index) =>
-			candidate(`due-${index}`, {
-				due: TODAY_UNIX,
-				reps: 4,
-			}),
-		);
-
-		const plan = buildDailyReviewPlan({
-			reviewQueue: [...backlog, ...dueToday],
-			nowUnix: NOW_UNIX,
-			dailyReviewCount: 12,
-		});
-
-		expect(plan.summary.plannedDueCount).toBe(3);
-		expect(plan.cards.map((card) => card.cardId)).toEqual(
-			expect.arrayContaining(["due-0", "due-1", "due-2"]),
-		);
-	});
-
-	it("prioritizes latest Again and lapsed problems as High-Risk Problems", () => {
-		const plan = buildDailyReviewPlan({
-			reviewQueue: [
-				candidate("hard-only", {
-					difficulty: "Hard",
-					latestRating: 3,
-					lapses: 0,
-				}),
-				candidate("latest-again", {
-					latestRating: 1,
-					lapses: 0,
-				}),
-				candidate("lapsed", {
-					latestRating: 3,
-					lapses: 1,
-				}),
-			],
 			nowUnix: NOW_UNIX,
 			dailyReviewCount: 3,
 		});
 
-		expect(plan.cards.map((card) => card.cardId)).toEqual([
-			"latest-again",
-			"lapsed",
-			"hard-only",
-		]);
-		expect(plan.summary.plannedHighRiskCount).toBe(2);
+		expect(plan.summary).toEqual({
+			dailyReviewCount: 3,
+			plannedCount: 3,
+			reviewQueueCount: 5,
+			waitingCount: 2,
+		});
 	});
 
-	it("uses stable tie-breakers for equal Review Priority", () => {
-		const plan = buildDailyReviewPlan({
-			reviewQueue: [
-				candidate("same-score-a", {
-					due: TODAY_UNIX,
-					reps: 4,
-					difficulty: "Easy",
-				}),
-				candidate("same-score-b", {
-					due: TODAY_UNIX,
-					reps: 4,
-					difficulty: "Easy",
-				}),
-			],
-			nowUnix: NOW_UNIX,
-			dailyReviewCount: 2,
-		});
+	it("orders reviewed problems by retrievability, highest first", () => {
+		const reviewQueue = [
+			candidate("forgotten", { retrievability: 0.4 }),
+			candidate("slipping", { retrievability: 0.8 }),
+			candidate("fading", { retrievability: 0.6 }),
+		];
 
-		expect(plan.cards.map((card) => card.cardId)).toEqual([
-			"same-score-a",
-			"same-score-b",
-		]);
+		expect(plannedIds(reviewQueue, 2)).toEqual(["slipping", "fading"]);
+	});
+
+	it("puts Fresh Problems ahead of everything else", () => {
+		const reviewQueue = [
+			candidate("slipping", { retrievability: 0.9 }),
+			candidate("fresh", {
+				reps: 0,
+				retrievability: 0,
+				createdAt: NOW_UNIX - DAY_SECONDS,
+			}),
+		];
+
+		expect(plannedIds(reviewQueue, 1)).toEqual(["fresh"]);
+	});
+
+	it("treats long-unreviewed problems as forgotten, not fresh", () => {
+		const reviewQueue = [
+			candidate("neglected", { reps: 0, retrievability: 0 }),
+			candidate("fading", { retrievability: 0.5 }),
+		];
+
+		expect(plannedIds(reviewQueue, 2)).toEqual(["fading", "neglected"]);
 	});
 });

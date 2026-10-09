@@ -6,6 +6,7 @@ import { useId } from "react";
 import { SiLeetcode } from "react-icons/si";
 
 import { EditProblemButton } from "@/components/problems/EditProblemDialog";
+import { ProblemNote } from "@/components/review/ProblemNote";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
 	Dialog,
@@ -20,6 +21,7 @@ import type {
 	RandomReviewSession as RandomReviewSessionModel,
 	ReviewPlatform,
 } from "@/lib/random-review";
+import { RATING_HINTS } from "@/lib/rating";
 import type { DueCard } from "@/lib/review.functions";
 import { cn } from "@/lib/utils";
 
@@ -191,6 +193,7 @@ export function RandomReviewSessionDialog({
 											title={session.problem.title}
 											url={session.problem.url}
 											neetcodeUrl={session.problem.neetcodeUrl}
+											notes={session.problem.notes}
 											tags={session.problem.tags}
 											className="mt-0.5"
 										/>
@@ -215,10 +218,11 @@ export function RandomReviewSessionDialog({
 								</span>
 							))}
 						</div>
+						<ProblemNote notes={session.problem.notes} />
 						<div className="grid gap-2 sm:grid-cols-2 md:grid-cols-4">
 							<RatingButton
 								label="Again"
-								hint="couldn't derive without major hint"
+								hint={RATING_HINTS.Again}
 								hotkey={HOTKEY_LABELS.rateAgain[0]}
 								disabled={!canSubmit}
 								onClick={() => onRate(1)}
@@ -226,7 +230,7 @@ export function RandomReviewSessionDialog({
 							/>
 							<RatingButton
 								label="Hard"
-								hint="solved, but slow or shaky"
+								hint={RATING_HINTS.Hard}
 								hotkey={HOTKEY_LABELS.rateHard[0]}
 								disabled={!canSubmit}
 								onClick={() => onRate(2)}
@@ -234,7 +238,7 @@ export function RandomReviewSessionDialog({
 							/>
 							<RatingButton
 								label="Good"
-								hint="solved cleanly after thinking"
+								hint={RATING_HINTS.Good}
 								hotkey={HOTKEY_LABELS.rateGood[0]}
 								disabled={!canSubmit}
 								onClick={() => onRate(3)}
@@ -242,7 +246,7 @@ export function RandomReviewSessionDialog({
 							/>
 							<RatingButton
 								label="Easy"
-								hint="recognized pattern, can code it"
+								hint={RATING_HINTS.Easy}
 								hotkey={HOTKEY_LABELS.rateEasy[0]}
 								disabled={!canSubmit}
 								onClick={() => onRate(4)}

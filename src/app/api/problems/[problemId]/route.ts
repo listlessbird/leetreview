@@ -6,6 +6,7 @@ import { updateProblemMeta } from "@/server/review";
 const updateInput = z.object({
 	url: z.string().url(),
 	neetcodeUrl: z.string().url().nullable(),
+	notes: z.string().trim().max(2000).nullable(),
 	tags: z.array(z.string().min(1)).max(50),
 });
 

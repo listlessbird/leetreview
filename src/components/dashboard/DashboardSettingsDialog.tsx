@@ -14,10 +14,10 @@ import {
 	DialogTrigger,
 } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { setSolveLanguage, useSolveLanguage } from "@/hooks/use-solve-language";
 import { authClient } from "@/lib/auth-client";
 import type { ReviewPlatform } from "@/lib/random-review";
-
-type PlatformSettingValue = ReviewPlatform | "ask";
+import { isSolveLanguage } from "@/lib/rating";
 
 type DashboardSettingsDialogProps = {
 	platformPreference: ReviewPlatform | null;
@@ -33,6 +33,8 @@ export function DashboardSettingsDialog({
 	const [open, setOpen] = useState(false);
 	const [isSigningOut, setIsSigningOut] = useState(false);
 	const platformSettingId = useId();
+	const languageSettingId = useId();
+	const solveLanguage = useSolveLanguage();
 	const user = session.data?.user;
 	const initials = getInitials(user?.name ?? user?.email ?? "User");
 	const platformValue = platformPreference ?? "ask";
@@ -71,7 +73,7 @@ export function DashboardSettingsDialog({
 				<DialogHeader>
 					<DialogTitle className="text-lg text-[#ededf5]">Settings</DialogTitle>
 					<DialogDescription className="text-sm text-white/55">
-						Account and Random Review preferences.
+						Account and review preferences.
 					</DialogDescription>
 				</DialogHeader>
 
@@ -114,23 +116,58 @@ export function DashboardSettingsDialog({
 						<span id={platformSettingId} className="sr-only">
 							Random Review platform preference
 						</span>
-						<PlatformOption
+						<SettingOption
 							value="ask"
 							label="Ask every time"
 							description="Choose LeetCode or NeetCode for each dual-platform problem."
 							checked={platformValue === "ask"}
 						/>
-						<PlatformOption
+						<SettingOption
 							value="leetcode"
 							label="LeetCode"
 							description="Open LeetCode automatically when both links exist."
 							checked={platformValue === "leetcode"}
 						/>
-						<PlatformOption
+						<SettingOption
 							value="neetcode"
 							label="NeetCode"
 							description="Open NeetCode automatically when both links exist."
 							checked={platformValue === "neetcode"}
+						/>
+					</RadioGroup>
+				</section>
+
+				<section className="rounded border border-white/10 bg-white/[0.03] p-4">
+					<div className="mb-3">
+						<h2 className="text-sm font-medium text-white/85">
+							Solving language
+						</h2>
+						<p className="mt-1 text-xs text-white/45">
+							Recorded with every review you rate.
+						</p>
+					</div>
+					<RadioGroup
+						value={solveLanguage}
+						onValueChange={(value) => {
+							if (isSolveLanguage(value)) setSolveLanguage(value);
+						}}
+						aria-labelledby={languageSettingId}
+						className="gap-2"
+					>
+						<span id={languageSettingId} className="sr-only">
+							Solving language
+						</span>
+						<SettingOption
+							value="java"
+							label="Java"
+							description="The main interview language for the backend track."
+							checked={solveLanguage === "java"}
+						/>
+						<SettingOption
+							value="python"
+							label="Python"
+							description="For problems you still solve in Python."
+							checked={solveLanguage === "python"}
 						/>
 					</RadioGroup>
 				</section>
@@ -149,13 +186,13 @@ export function DashboardSettingsDialog({
 	);
 }
 
-function PlatformOption({
+function SettingOption({
 	value,
 	label,
 	description,
 	checked,
 }: {
-	value: PlatformSettingValue;
+	value: string;
 	label: string;
 	description: string;
 	checked: boolean;

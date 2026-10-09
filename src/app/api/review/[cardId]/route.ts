@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { ZodError, z } from "zod";
 
+import { SOLVE_LANGUAGES } from "@/lib/rating";
 import { getReviewCard, submitReview } from "@/server/review";
 
 const reviewInput = z.object({
 	rating: z.number().int().min(1).max(4),
+	language: z.enum(SOLVE_LANGUAGES).optional(),
 });
 
 export async function GET(
@@ -29,8 +31,12 @@ export async function POST(
 ) {
 	try {
 		const { cardId } = await context.params;
-		const { rating } = reviewInput.parse(await request.json());
-		const result = await submitReview(request.headers, { cardId, rating });
+		const { rating, language } = reviewInput.parse(await request.json());
+		const result = await submitReview(request.headers, {
+			cardId,
+			rating,
+			language,
+		});
 		return NextResponse.json(result);
 	} catch (error) {
 		const message =

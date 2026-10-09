@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { Textarea } from "@/components/ui/textarea";
 import {
 	reviewQueryKeys,
 	type UpdateProblemMetaInput,
@@ -27,6 +28,7 @@ export type EditProblemButtonProps = {
 	title: string;
 	url: string;
 	neetcodeUrl: string | null;
+	notes: string | null;
 	tags: string[];
 	className?: string;
 	hoverReveal?: boolean;
@@ -37,6 +39,7 @@ export function EditProblemButton({
 	title,
 	url,
 	neetcodeUrl,
+	notes,
 	tags,
 	className,
 	hoverReveal = false,
@@ -71,6 +74,7 @@ export function EditProblemButton({
 					title={title}
 					url={url}
 					neetcodeUrl={neetcodeUrl}
+					notes={notes}
 					tags={tags}
 				/>
 			) : null}
@@ -85,6 +89,7 @@ type EditProblemDialogProps = {
 	title: string;
 	url: string;
 	neetcodeUrl: string | null;
+	notes: string | null;
 	tags: string[];
 };
 
@@ -95,20 +100,23 @@ function EditProblemDialog({
 	title,
 	url,
 	neetcodeUrl,
+	notes,
 	tags,
 }: EditProblemDialogProps) {
 	const queryClient = useQueryClient();
 	const [urlValue, setUrlValue] = React.useState(url);
 	const [neetcodeValue, setNeetcodeValue] = React.useState(neetcodeUrl ?? "");
 	const [tagsValue, setTagsValue] = React.useState(tags.join(", "));
+	const [notesValue, setNotesValue] = React.useState(notes ?? "");
 
 	React.useEffect(() => {
 		if (open) {
 			setUrlValue(url);
 			setNeetcodeValue(neetcodeUrl ?? "");
 			setTagsValue(tags.join(", "));
+			setNotesValue(notes ?? "");
 		}
-	}, [open, url, neetcodeUrl, tags]);
+	}, [open, url, neetcodeUrl, notes, tags]);
 
 	const mutation = useMutation({
 		mutationFn: (data: UpdateProblemMetaInput) =>
@@ -128,6 +136,7 @@ function EditProblemDialog({
 	function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 		const trimmedNeetcode = neetcodeValue.trim();
+		const trimmedNotes = notesValue.trim();
 		const parsedTags = tagsValue
 			.split(",")
 			.map((t) => t.trim())
@@ -136,6 +145,7 @@ function EditProblemDialog({
 		mutation.mutate({
 			url: urlValue.trim(),
 			neetcodeUrl: trimmedNeetcode === "" ? null : trimmedNeetcode,
+			notes: trimmedNotes === "" ? null : trimmedNotes,
 			tags: parsedTags,
 		});
 	}
@@ -216,6 +226,23 @@ function EditProblemDialog({
 							value={tagsValue}
 							onChange={(e) => setTagsValue(e.target.value)}
 							placeholder="array, hash-table, two-pointers"
+							className="border-white/15 bg-white/3 text-[#ededf5] placeholder:text-white/30 focus-visible:border-white/30 focus-visible:ring-0"
+						/>
+					</Field>
+					<Field
+						label="Note"
+						htmlFor={`${problemId}-notes`}
+						hint="Pattern, key insight, gotcha"
+					>
+						<Textarea
+							id={`${problemId}-notes`}
+							value={notesValue}
+							onChange={(e) => setNotesValue(e.target.value)}
+							maxLength={2000}
+							rows={3}
+							placeholder={
+								"Sliding window over counts.\nShrink while window is invalid.\nAnswer is max window length."
+							}
 							className="border-white/15 bg-white/3 text-[#ededf5] placeholder:text-white/30 focus-visible:border-white/30 focus-visible:ring-0"
 						/>
 					</Field>

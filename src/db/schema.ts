@@ -6,6 +6,7 @@ import {
 	text,
 	uniqueIndex,
 } from "drizzle-orm/sqlite-core";
+import { SOLVE_LANGUAGES } from "../lib/rating";
 import * as authSchema from "./auth.schema";
 
 export const problems = sqliteTable(
@@ -21,6 +22,8 @@ export const problems = sqliteTable(
 		tags: text("tags").notNull(),
 		url: text("url").notNull(),
 		neetcodeUrl: text("neetcode_url"),
+		// the learner's short approach note, checked after a recall attempt
+		notes: text("notes"),
 		createdAt: integer("created_at").notNull(),
 	},
 	(table) => [
@@ -77,19 +80,12 @@ export const reviewLogs = sqliteTable(
 		scheduledDays: integer("scheduled_days").notNull(),
 		learningSteps: integer("learning_steps").notNull(),
 		review: integer("review").notNull(),
+		// null for reviews logged before languages were tracked
+		language: text("language", { enum: SOLVE_LANGUAGES }),
 	},
 	(table) => [
 		index("review_logs_card_id_idx").on(table.cardId),
 		index("review_logs_user_review_idx").on(table.userId, table.review),
-		// covers the latest-rating-per-card lookup: user_id narrows, card_id
-		// gives the grouping in index order, review/rating are read straight
-		// out of the index so the table is never touched.
-		index("review_logs_user_card_review_idx").on(
-			table.userId,
-			table.cardId,
-			table.review,
-			table.rating,
-		),
 	],
 );
 

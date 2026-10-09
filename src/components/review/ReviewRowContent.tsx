@@ -5,6 +5,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { X } from "lucide-react";
 import { useState } from "react";
 
+import { ProblemNote } from "@/components/review/ProblemNote";
 import { Kbd } from "@/components/ui/kbd";
 import {
 	Tooltip,
@@ -12,27 +13,25 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useSolveLanguage } from "@/hooks/use-solve-language";
 import { HOTKEY_LABELS, HOTKEYS } from "@/lib/hotkeys";
+import { RATING_HINTS } from "@/lib/rating";
+import { reviewQueryKeys, submitReview } from "@/lib/review.functions";
 import { cn } from "@/lib/utils";
-import {
-	reviewQueryKeys,
-	submitReview,
-} from "@/lib/review.functions";
 
 interface ReviewRowContentProps {
 	cardId: string;
+	notes: string | null;
 	onClose: () => void;
 }
 
-const RATING_HINTS = {
-	Again: "couldn't derive without major hint",
-	Hard: "solved, but slow or shaky",
-	Good: "solved cleanly after thinking",
-	Easy: "recognized pattern, can code it",
-} as const;
-
-export function ReviewRowContent({ cardId, onClose }: ReviewRowContentProps) {
+export function ReviewRowContent({
+	cardId,
+	notes,
+	onClose,
+}: ReviewRowContentProps) {
 	const queryClient = useQueryClient();
+	const solveLanguage = useSolveLanguage();
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
@@ -40,7 +39,7 @@ export function ReviewRowContent({ cardId, onClose }: ReviewRowContentProps) {
 		setError(null);
 		setIsSubmitting(true);
 		try {
-			await submitReview({ data: { cardId, rating } });
+			await submitReview({ data: { cardId, rating, language: solveLanguage } });
 			await Promise.all([
 				queryClient.invalidateQueries({ queryKey: reviewQueryKeys.dueCards }),
 				queryClient.invalidateQueries({ queryKey: reviewQueryKeys.problems }),
@@ -75,51 +74,54 @@ export function ReviewRowContent({ cardId, onClose }: ReviewRowContentProps) {
 	});
 
 	return (
-		<div className="flex h-full items-center gap-3 px-3 py-2">
-			<span className="shrink-0 text-xs text-white/40">Rate recall:</span>
-			<TooltipProvider>
-				<div className="flex items-center gap-1.5">
-					<RatingButton
-						label="Again"
-						hotkey={HOTKEY_LABELS.rateAgain[0]}
-						onClick={() => void handleRate(1)}
-						disabled={isSubmitting}
-						colorClass="hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-200"
-					/>
-					<RatingButton
-						label="Hard"
-						hotkey={HOTKEY_LABELS.rateHard[0]}
-						onClick={() => void handleRate(2)}
-						disabled={isSubmitting}
-						colorClass="hover:border-orange-500/40 hover:bg-orange-500/10 hover:text-orange-200"
-					/>
-					<RatingButton
-						label="Good"
-						hotkey={HOTKEY_LABELS.rateGood[0]}
-						onClick={() => void handleRate(3)}
-						disabled={isSubmitting}
-						colorClass="hover:border-emerald-500/40 hover:bg-emerald-500/10 hover:text-emerald-200"
-					/>
-					<RatingButton
-						label="Easy"
-						hotkey={HOTKEY_LABELS.rateEasy[0]}
-						onClick={() => void handleRate(4)}
-						disabled={isSubmitting}
-						colorClass="hover:border-sky-500/40 hover:bg-sky-500/10 hover:text-sky-200"
-					/>
-				</div>
-			</TooltipProvider>
-			{error ? (
-				<span className="text-xs text-red-300">{error}</span>
-			) : null}
-			<button
-				type="button"
-				onClick={onClose}
-				aria-label="Close review"
-				className="ml-auto transform-gpu rounded border border-white/10 p-1 text-white/30 transition-colors duration-150 ease-out hover:border-white/20 hover:text-white/60 active:scale-[0.97] motion-reduce:transform-none motion-reduce:transition-none"
-			>
-				<X className="size-3.5" />
-			</button>
+		<div className="flex flex-col gap-2 px-3 py-2">
+			<ProblemNote notes={notes} />
+			<div className="flex h-full items-center gap-3">
+				<span className="shrink-0 text-xs text-white/40">
+					Rate recall ({solveLanguage === "java" ? "Java" : "Python"}):
+				</span>
+				<TooltipProvider>
+					<div className="flex items-center gap-1.5">
+						<RatingButton
+							label="Again"
+							hotkey={HOTKEY_LABELS.rateAgain[0]}
+							onClick={() => void handleRate(1)}
+							disabled={isSubmitting}
+							colorClass="hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-200"
+						/>
+						<RatingButton
+							label="Hard"
+							hotkey={HOTKEY_LABELS.rateHard[0]}
+							onClick={() => void handleRate(2)}
+							disabled={isSubmitting}
+							colorClass="hover:border-orange-500/40 hover:bg-orange-500/10 hover:text-orange-200"
+						/>
+						<RatingButton
+							label="Good"
+							hotkey={HOTKEY_LABELS.rateGood[0]}
+							onClick={() => void handleRate(3)}
+							disabled={isSubmitting}
+							colorClass="hover:border-emerald-500/40 hover:bg-emerald-500/10 hover:text-emerald-200"
+						/>
+						<RatingButton
+							label="Easy"
+							hotkey={HOTKEY_LABELS.rateEasy[0]}
+							onClick={() => void handleRate(4)}
+							disabled={isSubmitting}
+							colorClass="hover:border-sky-500/40 hover:bg-sky-500/10 hover:text-sky-200"
+						/>
+					</div>
+				</TooltipProvider>
+				{error ? <span className="text-xs text-red-300">{error}</span> : null}
+				<button
+					type="button"
+					onClick={onClose}
+					aria-label="Close review"
+					className="ml-auto transform-gpu rounded border border-white/10 p-1 text-white/30 transition-colors duration-150 ease-out hover:border-white/20 hover:text-white/60 active:scale-[0.97] motion-reduce:transform-none motion-reduce:transition-none"
+				>
+					<X className="size-3.5" />
+				</button>
+			</div>
 		</div>
 	);
 }
@@ -132,7 +134,13 @@ interface RatingButtonProps {
 	colorClass: string;
 }
 
-function RatingButton({ label, hotkey, onClick, disabled, colorClass }: RatingButtonProps) {
+function RatingButton({
+	label,
+	hotkey,
+	onClick,
+	disabled,
+	colorClass,
+}: RatingButtonProps) {
 	return (
 		<Tooltip>
 			<TooltipTrigger asChild>
@@ -146,7 +154,9 @@ function RatingButton({ label, hotkey, onClick, disabled, colorClass }: RatingBu
 					)}
 				>
 					{label}
-					<Kbd className="border border-white/15 bg-white/8 text-[10px] text-white/45">{hotkey}</Kbd>
+					<Kbd className="border border-white/15 bg-white/8 text-[10px] text-white/45">
+						{hotkey}
+					</Kbd>
 				</button>
 			</TooltipTrigger>
 			<TooltipContent

@@ -8,3 +8,4 @@ data/*.sqlite
 data/*.sqlite-*
 .vercel
 docs/
+data/backups/

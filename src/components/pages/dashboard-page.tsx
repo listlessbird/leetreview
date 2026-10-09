@@ -152,6 +152,7 @@ export function DashboardPage({
 							title={row.original.title}
 							url={row.original.url}
 							neetcodeUrl={row.original.neetcodeUrl}
+							notes={row.original.notes}
 							tags={row.original.tags}
 							className="opacity-0 transition-opacity group-hover/title:opacity-100"
 						/>
@@ -394,6 +395,7 @@ export function DashboardPage({
 							renderExpandedRow={(row) => (
 								<ReviewRowContent
 									cardId={row.original.cardId}
+									notes={row.original.notes}
 									onClose={() => setReviewCardId(null)}
 								/>
 							)}
@@ -427,14 +429,11 @@ function PlanSummaryBar({ summary }: { summary: DailyReviewPlanSummary }) {
 			value: `${summary.plannedCount}/${summary.dailyReviewCount}`,
 		},
 		{ label: "Review Queue", value: summary.reviewQueueCount },
-		{ label: "Backlog waiting", value: summary.backlogNotPlannedCount },
-		{ label: "Due", value: summary.plannedDueCount },
-		{ label: "Low-practice", value: summary.plannedLowPracticeCount },
-		{ label: "High-risk", value: summary.plannedHighRiskCount },
+		{ label: "Waiting", value: summary.waitingCount },
 	];
 
 	return (
-		<div className="grid gap-2 rounded border border-white/10 bg-white/[0.035] p-3 sm:grid-cols-2 lg:grid-cols-6">
+		<div className="grid gap-2 rounded border border-white/10 bg-white/[0.035] p-3 sm:grid-cols-3">
 			{stats.map((stat) => (
 				<div key={stat.label} className="min-w-0">
 					<div className="text-[11px] uppercase tracking-wide text-white/45">

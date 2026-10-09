@@ -50,6 +50,20 @@
       "when": 1786247997844,
       "tag": "0006_far_hydra",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1791506616713,
+      "tag": "0007_restart_notes_language",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1791506617154,
+      "tag": "0008_restart_difficulty_reset",
+      "breakpoints": true
     }
   ]
 }

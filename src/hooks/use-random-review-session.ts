@@ -4,6 +4,7 @@ import { useHotkey } from "@tanstack/react-hotkeys";
 import { useQueryClient } from "@tanstack/react-query";
 import { parseAsString, parseAsStringLiteral, useQueryStates } from "nuqs";
 import * as React from "react";
+import { useSolveLanguage } from "@/hooks/use-solve-language";
 import { HOTKEYS } from "@/lib/hotkeys";
 import {
 	chooseRandomReview,
@@ -64,6 +65,7 @@ export function useRandomReviewSession({
 	const [notice, setNotice] = React.useState<string | null>(null);
 	const [error, setError] = React.useState<string | null>(null);
 	const [isSubmitting, setIsSubmitting] = React.useState(false);
+	const solveLanguage = useSolveLanguage();
 
 	const randomProblem = React.useMemo(() => {
 		if (!randomProblemSlug) return null;
@@ -254,7 +256,11 @@ export function useRandomReviewSession({
 			setIsSubmitting(true);
 			try {
 				await submitReview({
-					data: { cardId: session.problem.cardId, rating },
+					data: {
+						cardId: session.problem.cardId,
+						rating,
+						language: solveLanguage,
+					},
 				});
 				await Promise.all([
 					queryClient.invalidateQueries({ queryKey: reviewQueryKeys.dueCards }),
@@ -275,7 +281,7 @@ export function useRandomReviewSession({
 				setIsSubmitting(false);
 			}
 		},
-		[isSubmitting, queryClient, session, setRandomState],
+		[isSubmitting, queryClient, session, setRandomState, solveLanguage],
 	);
 
 	const openAgain = React.useCallback(() => {

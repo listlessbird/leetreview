@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, desc, eq, isNull, lt, lte, max, or } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, lt, lte, or } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import {
 	type Card,
@@ -16,23 +16,51 @@ import { cards, problems, reviewLogs } from "@/db/schema";
 import {
 	buildDailyReviewPlan,
 	DEFAULT_DAILY_REVIEW_COUNT,
-	type ReviewRating,
 } from "@/lib/daily-review-plan";
 import {
 	extractLeetCodeSlug,
 	fetchLeetCodeQuestion,
 } from "@/lib/leetcode.server";
 import { getNeetcodeUrl } from "@/lib/neetcode.server";
+import type { SolveLanguage } from "@/lib/rating";
 import { getSessionFromHeaders } from "@/server/session";
 
+// tuned for a full-time-job budget where each review is a 15-25 min re-solve:
+// - 0.85 retention gives ~3x longer intervals than 0.93, so the daily load
+//   fits one study block.
+// - the 1-day (re)learning step is the stuck rule: anything rated Again (or a
+//   brand-new problem rated Again) comes back tomorrow to be re-solved from
+//   memory, instead of FSRS's post-lapse interval of up to a week.
+// - 45 days caps how long a problem can go unseen; a success after a long
+//   break otherwise jumps straight to months. pull it toward 30 before
+//   interviews.
 const FSRS_CONFIG: Partial<FSRSParameters> = {
-	request_retention: 0.93,
+	request_retention: 0.85,
 	maximum_interval: 45,
 	enable_fuzz: true,
-	enable_short_term: false,
-	learning_steps: [],
-	relearning_steps: [],
+	enable_short_term: true,
+	learning_steps: ["1d"],
+	relearning_steps: ["1d"],
 };
+
+const scheduler = fsrs(FSRS_CONFIG);
+
+type CardRow = typeof cards.$inferSelect;
+
+function toFsrsCard(row: CardRow): Card {
+	return {
+		due: new Date(row.due * 1000),
+		stability: row.stability,
+		difficulty: row.difficulty,
+		elapsed_days: row.elapsedDays,
+		scheduled_days: row.scheduledDays,
+		learning_steps: row.learningSteps,
+		reps: row.reps,
+		lapses: row.lapses,
+		state: row.state as State,
+		last_review: row.lastReview ? new Date(row.lastReview * 1000) : undefined,
+	};
+}
 
 function nowUnix() {
 	return Math.floor(Date.now() / 1000);
@@ -62,36 +90,6 @@ function startOfTomorrowUtcUnix() {
 	);
 }
 
-function seedCardByProblemDifficulty(
-	card: Card,
-	problemDifficulty: string,
-): Card {
-	const normalized = problemDifficulty.trim().toLowerCase();
-
-	if (normalized === "hard") {
-		return {
-			...card,
-			difficulty: 7.5,
-			stability: 0.2,
-		};
-	}
-	if (normalized === "medium") {
-		return {
-			...card,
-			difficulty: 6.0,
-			stability: 0.3,
-		};
-	}
-	if (normalized === "easy") {
-		return {
-			...card,
-			difficulty: 4.5,
-			stability: 0.5,
-		};
-	}
-	return card;
-}
-
 async function getCurrentUserId(requestHeaders: Headers) {
 	const session = await getSessionFromHeaders(requestHeaders);
 	if (!session?.user?.id) {
@@ -105,24 +103,21 @@ export async function getDueCards(requestHeaders: Headers) {
 	const userId = await getCurrentUserId(requestHeaders);
 	const dueBy = endOfTodayUtcUnix();
 	const reviewedBefore = startOfTodayUtcUnix();
-	const reviewNow = nowUnix();
+	const now = new Date();
 	const db = await getDb();
 
 	const rows = await db
 		.select({
-			cardId: cards.id,
+			card: cards,
 			problemId: problems.id,
-			due: cards.due,
-			state: cards.state,
 			slug: problems.slug,
 			title: problems.title,
 			difficulty: problems.difficulty,
 			tags: problems.tags,
 			url: problems.url,
 			neetcodeUrl: problems.neetcodeUrl,
+			notes: problems.notes,
 			createdAt: problems.createdAt,
-			reps: cards.reps,
-			lapses: cards.lapses,
 		})
 		.from(cards)
 		.innerJoin(problems, eq(cards.problemId, problems.id))
@@ -135,74 +130,29 @@ export async function getDueCards(requestHeaders: Headers) {
 		)
 		.orderBy(asc(cards.due));
 
-	const latestRatingByCardId =
-		rows.length === 0
-			? new Map<string, ReviewRating>()
-			: await getLatestRatingByCardId(userId);
+	const reviewQueue = rows.map(({ card, ...problem }) => ({
+		...problem,
+		cardId: card.id,
+		due: card.due,
+		state: card.state,
+		reps: card.reps,
+		tags: JSON.parse(problem.tags) as string[],
+		retrievability:
+			card.reps === 0
+				? 0
+				: scheduler.get_retrievability(toFsrsCard(card), now, false),
+	}));
 	const plan = buildDailyReviewPlan({
-		reviewQueue: rows.map((row) => ({
-			...row,
-			latestRating: latestRatingByCardId.get(row.cardId) ?? null,
-		})),
-		nowUnix: reviewNow,
+		reviewQueue,
+		nowUnix: Math.floor(now.getTime() / 1000),
 		dailyReviewCount: DEFAULT_DAILY_REVIEW_COUNT,
 	});
 
-	const reviewQueueCards = rows.map((row) => ({
-		cardId: row.cardId,
-		problemId: row.problemId,
-		due: row.due,
-		state: row.state,
-		slug: row.slug,
-		title: row.title,
-		difficulty: row.difficulty,
-		tags: JSON.parse(row.tags) as string[],
-		url: row.url,
-		neetcodeUrl: row.neetcodeUrl,
-	}));
-
 	return {
-		cards: plan.cards.map((row) => ({
-			cardId: row.cardId,
-			problemId: row.problemId,
-			due: row.due,
-			state: row.state,
-			slug: row.slug,
-			title: row.title,
-			difficulty: row.difficulty,
-			tags: JSON.parse(row.tags) as string[],
-			url: row.url,
-			neetcodeUrl: row.neetcodeUrl,
-		})),
-		reviewQueueCards,
+		cards: plan.cards,
+		reviewQueueCards: reviewQueue,
 		summary: plan.summary,
 	};
-}
-
-// one row per card, holding the rating of that card's newest log.
-//
-// `rating` is a bare column next to `max(review)`: sqlite guarantees bare
-// columns come from the row that produced the min/max when the query has
-// exactly one such aggregate, so this is the latest rating without a
-// self-join or a window function.
-//
-// the user id is the only bound parameter, which keeps this under d1's limit
-// of 100 parameters per statement no matter how many cards a user has.
-async function getLatestRatingByCardId(userId: string) {
-	const db = await getDb();
-	const rows = await db
-		.select({
-			cardId: reviewLogs.cardId,
-			rating: reviewLogs.rating,
-			latestReview: max(reviewLogs.review),
-		})
-		.from(reviewLogs)
-		.where(eq(reviewLogs.userId, userId))
-		.groupBy(reviewLogs.cardId);
-
-	return new Map(
-		rows.map((row) => [row.cardId, row.rating as ReviewRating] as const),
-	);
 }
 
 export async function listProblems(requestHeaders: Headers) {
@@ -218,6 +168,7 @@ export async function listProblems(requestHeaders: Headers) {
 			tags: problems.tags,
 			url: problems.url,
 			neetcodeUrl: problems.neetcodeUrl,
+			notes: problems.notes,
 			createdAt: problems.createdAt,
 			cardId: cards.id,
 			due: cards.due,
@@ -239,7 +190,12 @@ export async function listProblems(requestHeaders: Headers) {
 export async function updateProblemMeta(
 	requestHeaders: Headers,
 	problemId: string,
-	input: { url: string; neetcodeUrl: string | null; tags: string[] },
+	input: {
+		url: string;
+		neetcodeUrl: string | null;
+		notes: string | null;
+		tags: string[];
+	},
 ) {
 	const userId = await getCurrentUserId(requestHeaders);
 	const db = await getDb();
@@ -259,6 +215,7 @@ export async function updateProblemMeta(
 		.set({
 			url: input.url,
 			neetcodeUrl: input.neetcodeUrl,
+			notes: input.notes,
 			tags: JSON.stringify(input.tags),
 		})
 		.where(eq(problems.id, problemId));
@@ -267,6 +224,7 @@ export async function updateProblemMeta(
 		problemId,
 		url: input.url,
 		neetcodeUrl: input.neetcodeUrl,
+		notes: input.notes,
 		tags: input.tags,
 	};
 }
@@ -292,10 +250,7 @@ export async function addProblemFromUrl(requestHeaders: Headers, url: string) {
 	const problemId = nanoid();
 	const cardId = nanoid();
 	const ts = nowUnix();
-	const baseCard = seedCardByProblemDifficulty(
-		createEmptyCard(new Date()),
-		metadata.difficulty,
-	);
+	const baseCard = createEmptyCard(new Date());
 
 	await db.batch([
 		db.insert(problems).values({
@@ -343,6 +298,7 @@ export async function getReviewCard(requestHeaders: Headers, cardId: string) {
 			tags: problems.tags,
 			url: problems.url,
 			neetcodeUrl: problems.neetcodeUrl,
+			notes: problems.notes,
 			due: cards.due,
 			state: cards.state,
 			reps: cards.reps,
@@ -369,9 +325,11 @@ export async function submitReview(
 	{
 		cardId,
 		rating,
+		language,
 	}: {
 		cardId: string;
 		rating: number;
+		language?: SolveLanguage;
 	},
 ) {
 	const userId = await getCurrentUserId(requestHeaders);
@@ -387,25 +345,9 @@ export async function submitReview(
 		throw new Error("Card not found.");
 	}
 
-	const fsrsCard: Card = {
-		due: new Date(existing.due * 1000),
-		stability: existing.stability,
-		difficulty: existing.difficulty,
-		elapsed_days: existing.elapsedDays,
-		scheduled_days: existing.scheduledDays,
-		learning_steps: existing.learningSteps,
-		reps: existing.reps,
-		lapses: existing.lapses,
-		state: existing.state as State,
-		last_review: existing.lastReview
-			? new Date(existing.lastReview * 1000)
-			: undefined,
-	};
-
-	const scheduler = fsrs(FSRS_CONFIG);
 	const effectiveReviewUnix = Math.max(nowUnix(), existing.due);
 	const next = scheduler.next(
-		fsrsCard,
+		toFsrsCard(existing),
 		new Date(effectiveReviewUnix * 1000),
 		rating as Grade,
 	);
@@ -444,6 +386,7 @@ export async function submitReview(
 			scheduledDays: reviewLog.scheduled_days,
 			learningSteps: reviewLog.learning_steps,
 			review: Math.floor(reviewLog.review.getTime() / 1000),
+			language,
 		}),
 	]);
 

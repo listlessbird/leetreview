@@ -5,17 +5,28 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { EditProblemButton } from "@/components/problems/EditProblemDialog";
+import { ProblemNote } from "@/components/review/ProblemNote";
+import { useSolveLanguage } from "@/hooks/use-solve-language";
+import { RATING_HINTS } from "@/lib/rating";
 import {
 	fetchReviewCard,
 	reviewQueryKeys,
 	submitReview,
 } from "@/lib/review.functions";
 
+const RATINGS = [
+	{ rating: 1, label: "Again" },
+	{ rating: 2, label: "Hard" },
+	{ rating: 3, label: "Good" },
+	{ rating: 4, label: "Easy" },
+] as const;
+
 export function ReviewCardPage({ cardId }: { cardId: string }) {
 	const router = useRouter();
 	const queryClient = useQueryClient();
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const solveLanguage = useSolveLanguage();
 	const {
 		data: card,
 		error: loadError,
@@ -30,7 +41,7 @@ export function ReviewCardPage({ cardId }: { cardId: string }) {
 		setError(null);
 		setIsSubmitting(true);
 		try {
-			await submitReview({ data: { cardId, rating } });
+			await submitReview({ data: { cardId, rating, language: solveLanguage } });
 			await Promise.all([
 				queryClient.invalidateQueries({ queryKey: reviewQueryKeys.dueCards }),
 				queryClient.invalidateQueries({ queryKey: reviewQueryKeys.problems }),
@@ -82,6 +93,7 @@ export function ReviewCardPage({ cardId }: { cardId: string }) {
 						title={card.title}
 						url={card.url}
 						neetcodeUrl={card.neetcodeUrl}
+						notes={card.notes}
 						tags={card.tags}
 					/>
 				</div>
@@ -100,7 +112,9 @@ export function ReviewCardPage({ cardId }: { cardId: string }) {
 				</div>
 				<div className="mt-6 rounded border border-white/10 bg-black/20 p-4 text-sm text-white/80">
 					<p className="mb-2">
-						Open the problem, solve it, then rate your recall.
+						Open the problem, solve it in{" "}
+						{solveLanguage === "java" ? "Java" : "Python"}, then rate your
+						recall.
 					</p>
 					<a
 						href={card.url}
@@ -111,51 +125,22 @@ export function ReviewCardPage({ cardId }: { cardId: string }) {
 						Open on LeetCode
 					</a>
 				</div>
+				<ProblemNote notes={card.notes} className="mt-4" />
 				<div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-					<button
-						type="button"
-						onClick={() => void handleRate(1)}
-						disabled={isSubmitting}
-						className="flex flex-col items-center gap-1 rounded border border-white/20 px-3 py-2.5 text-sm hover:bg-white/10 disabled:opacity-60"
-					>
-						Again
-						<span className="text-[10px] font-normal text-white/35">
-							couldn&apos;t derive without major hint
-						</span>
-					</button>
-					<button
-						type="button"
-						onClick={() => void handleRate(2)}
-						disabled={isSubmitting}
-						className="flex flex-col items-center gap-1 rounded border border-white/20 px-3 py-2.5 text-sm hover:bg-white/10 disabled:opacity-60"
-					>
-						Hard
-						<span className="text-[10px] font-normal text-white/35">
-							solved, but slow or shaky
-						</span>
-					</button>
-					<button
-						type="button"
-						onClick={() => void handleRate(3)}
-						disabled={isSubmitting}
-						className="flex flex-col items-center gap-1 rounded border border-white/20 px-3 py-2.5 text-sm hover:bg-white/10 disabled:opacity-60"
-					>
-						Good
-						<span className="text-[10px] font-normal text-white/35">
-							solved cleanly after thinking
-						</span>
-					</button>
-					<button
-						type="button"
-						onClick={() => void handleRate(4)}
-						disabled={isSubmitting}
-						className="flex flex-col items-center gap-1 rounded border border-white/20 px-3 py-2.5 text-sm hover:bg-white/10 disabled:opacity-60"
-					>
-						Easy
-						<span className="text-[10px] font-normal text-white/35">
-							recognized pattern, can code it
-						</span>
-					</button>
+					{RATINGS.map(({ rating, label }) => (
+						<button
+							key={rating}
+							type="button"
+							onClick={() => void handleRate(rating)}
+							disabled={isSubmitting}
+							className="flex flex-col items-center gap-1 rounded border border-white/20 px-3 py-2.5 text-sm hover:bg-white/10 disabled:opacity-60"
+						>
+							{label}
+							<span className="text-center text-[10px] font-normal text-white/35">
+								{RATING_HINTS[label]}
+							</span>
+						</button>
+					))}
 				</div>
 				{error ? <p className="mt-3 text-sm text-red-300">{error}</p> : null}
 			</div>

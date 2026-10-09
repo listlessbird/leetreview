@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { DailyReviewPlanSummary } from "@/lib/daily-review-plan";
+import { SOLVE_LANGUAGES, type SolveLanguage } from "@/lib/rating";
 
 export type DueCard = {
 	cardId: string;
@@ -11,6 +12,7 @@ export type DueCard = {
 	tags: string[];
 	url: string;
 	neetcodeUrl: string | null;
+	notes: string | null;
 };
 
 export type DueCardsResponse = {
@@ -28,6 +30,7 @@ export type ProblemRow = {
 	tags: string[];
 	url: string;
 	neetcodeUrl: string | null;
+	notes: string | null;
 	due: number;
 	reps: number;
 };
@@ -40,20 +43,17 @@ export type ReviewCard = {
 	tags: string[];
 	url: string;
 	neetcodeUrl: string | null;
+	notes: string | null;
 };
 
 export type UpdateProblemMetaInput = {
 	url: string;
 	neetcodeUrl: string | null;
+	notes: string | null;
 	tags: string[];
 };
 
-export type UpdatedProblemMeta = {
-	problemId: string;
-	url: string;
-	neetcodeUrl: string | null;
-	tags: string[];
-};
+export type UpdatedProblemMeta = UpdateProblemMetaInput & { problemId: string };
 
 export const reviewQueryKeys = {
 	dueCards: ["due-cards"] as const,
@@ -68,6 +68,7 @@ const addProblemInput = z.object({
 const reviewInput = z.object({
 	cardId: z.string().min(1),
 	rating: z.number().int().min(1).max(4),
+	language: z.enum(SOLVE_LANGUAGES),
 });
 
 const cardIdInput = z.object({
@@ -77,6 +78,7 @@ const cardIdInput = z.object({
 const updateProblemInput = z.object({
 	url: z.string().url(),
 	neetcodeUrl: z.string().url().nullable(),
+	notes: z.string().trim().max(2000).nullable(),
 	tags: z.array(z.string().min(1)).max(50),
 });
 
@@ -177,7 +179,7 @@ export async function updateProblem({
 export async function submitReview({
 	data,
 }: {
-	data: { cardId: string; rating: number };
+	data: { cardId: string; rating: number; language: SolveLanguage };
 }) {
 	cardIdInput.parse({ cardId: data.cardId });
 	const body = reviewInput.parse(data);
@@ -186,7 +188,7 @@ export async function submitReview({
 		headers: {
 			"content-type": "application/json",
 		},
-		body: JSON.stringify({ rating: body.rating }),
+		body: JSON.stringify({ rating: body.rating, language: body.language }),
 	});
 
 	if (!response.ok) {
