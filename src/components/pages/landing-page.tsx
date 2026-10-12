@@ -1,7 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { SiGithub } from "react-icons/si";
 
+import { StandalonePage } from "@/components/shell/StandalonePage";
+import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { authClient } from "@/lib/auth-client";
 
 export function LandingPage({
@@ -24,34 +28,23 @@ export function LandingPage({
 	}
 
 	return (
-		<div className="lr-root">
-			<div className="relative z-10 flex w-full max-w-100 flex-col gap-6">
-				<header className="lr-logo flex items-center justify-center gap-2.5">
-					<span className="lr-dot" aria-hidden="true" />
-					<span className="font-berkeley text-base font-medium tracking-[0.14em] text-[#ededf5]">
-						leet-review
-					</span>
-				</header>
-
-				<main className="lr-card">
-					<h1 className="mb-2 text-[1.875rem] font-bold leading-none tracking-[-0.035em] text-[#ededf5]">
-						Spaced repetition for LeetCode
-					</h1>
-					<p className="mb-8 text-sm leading-[1.55] text-[rgba(237,237,245,0.5)]">
-						Track problems. Review due cards daily. Keep interview patterns
-						fresh.
-					</p>
-
-					<button
-						type="button"
-						className="lr-btn"
-						onClick={handleSignIn}
-						disabled={isLoading}
-					>
-						{isLoading ? "Connecting..." : "Sign in with GitHub"}
-					</button>
-				</main>
-			</div>
-		</div>
+		<StandalonePage>
+			<h1 className="font-semibold text-2xl tracking-tight">
+				Spaced repetition for LeetCode
+			</h1>
+			<p className="mt-2 text-muted-foreground text-sm">
+				Track problems. Review a small plan every day. Keep interview patterns
+				fresh.
+			</p>
+			<Button
+				size="lg"
+				className="mt-8 w-full"
+				onClick={handleSignIn}
+				disabled={isLoading}
+			>
+				{isLoading ? <Spinner /> : <SiGithub />}
+				{isLoading ? "Connecting..." : "Sign in with GitHub"}
+			</Button>
+		</StandalonePage>
 	);
 }

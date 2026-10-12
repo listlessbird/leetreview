@@ -4,8 +4,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { addProblemFromUrl, reviewQueryKeys } from "@/lib/review.functions";
 
+/** Add a problem by URL, for links shared straight to /add. */
 export function AddPage() {
 	const router = useRouter();
 	const queryClient = useQueryClient();
@@ -36,33 +39,30 @@ export function AddPage() {
 	}
 
 	return (
-		<div className="min-h-screen bg-[#07070e] p-8 font-berkeley text-[#ededf5]">
-			<div className="mx-auto w-full max-w-2xl rounded border border-white/10 bg-white/5 p-6">
-				<h1 className="mb-2 text-2xl font-bold tracking-tight">
-					Add LeetCode Problem
-				</h1>
-				<p className="mb-6 text-sm text-white/65">
+		<div className="mx-auto flex w-full max-w-xl flex-col gap-6 px-4 py-10 sm:px-6">
+			<div className="flex flex-col gap-1">
+				<h2 className="font-semibold text-xl tracking-tight">
+					Add a LeetCode problem
+				</h2>
+				<p className="text-muted-foreground text-sm">
 					Paste a URL like https://leetcode.com/problems/two-sum/
 				</p>
-				<form className="space-y-4" onSubmit={onSubmit}>
-					<input
-						type="url"
-						required
-						value={url}
-						onChange={(event) => setUrl(event.target.value)}
-						placeholder="https://leetcode.com/problems/two-sum/"
-						className="w-full rounded border border-white/20 bg-black/25 px-3 py-2 text-sm outline-none placeholder:text-white/35 focus:border-white/40"
-					/>
-					<button
-						type="submit"
-						disabled={isSubmitting}
-						className="rounded border border-white/20 px-4 py-2 text-sm hover:bg-white/10 disabled:opacity-60"
-					>
-						{isSubmitting ? "Adding..." : "Add problem"}
-					</button>
-					{error ? <p className="text-sm text-red-300">{error}</p> : null}
-				</form>
 			</div>
+			<form className="flex flex-col gap-3" onSubmit={onSubmit}>
+				<Input
+					type="url"
+					required
+					value={url}
+					onChange={(event) => setUrl(event.target.value)}
+					placeholder="https://leetcode.com/problems/two-sum/"
+				/>
+				<Button type="submit" disabled={isSubmitting} className="self-start">
+					{isSubmitting ? "Adding..." : "Add problem"}
+				</Button>
+				{error ? (
+					<p className="text-destructive-foreground text-sm">{error}</p>
+				) : null}
+			</form>
 		</div>
 	);
 }

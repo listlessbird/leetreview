@@ -1,35 +1,18 @@
 "use client";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
 
-import { EditProblemButton } from "@/components/problems/EditProblemDialog";
-import { ProblemNote } from "@/components/review/ProblemNote";
-import { useSolveLanguage } from "@/hooks/use-solve-language";
-import { RATING_HINTS } from "@/lib/rating";
-import {
-	fetchReviewCard,
-	reviewQueryKeys,
-	submitReview,
-} from "@/lib/review.functions";
+import { ReviewFocus } from "@/components/review/ReviewFocus";
+import { Spinner } from "@/components/ui/spinner";
+import { fetchReviewCard, reviewQueryKeys } from "@/lib/review.functions";
 
-const RATINGS = [
-	{ rating: 1, label: "Again" },
-	{ rating: 2, label: "Hard" },
-	{ rating: 3, label: "Good" },
-	{ rating: 4, label: "Easy" },
-] as const;
-
+/** Any tracked card in the focus view, for reviews outside today's plan. */
 export function ReviewCardPage({ cardId }: { cardId: string }) {
 	const router = useRouter();
-	const queryClient = useQueryClient();
-	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [error, setError] = useState<string | null>(null);
-	const solveLanguage = useSolveLanguage();
 	const {
 		data: card,
-		error: loadError,
+		error,
 		isLoading,
 	} = useQuery({
 		queryKey: reviewQueryKeys.reviewCard(cardId),
@@ -37,113 +20,23 @@ export function ReviewCardPage({ cardId }: { cardId: string }) {
 		staleTime: 30_000,
 	});
 
-	async function handleRate(rating: 1 | 2 | 3 | 4) {
-		setError(null);
-		setIsSubmitting(true);
-		try {
-			await submitReview({ data: { cardId, rating, language: solveLanguage } });
-			await Promise.all([
-				queryClient.invalidateQueries({ queryKey: reviewQueryKeys.dueCards }),
-				queryClient.invalidateQueries({ queryKey: reviewQueryKeys.problems }),
-				queryClient.invalidateQueries({
-					queryKey: reviewQueryKeys.reviewCard(cardId),
-				}),
-			]);
-			router.replace("/dashboard");
-		} catch (submitError) {
-			setError(
-				submitError instanceof Error
-					? submitError.message
-					: "Failed to submit review.",
-			);
-		} finally {
-			setIsSubmitting(false);
-		}
-	}
-
 	if (isLoading) {
 		return (
-			<div className="min-h-screen bg-[#07070e] p-8 font-berkeley text-[#ededf5]">
-				<div className="mx-auto w-full max-w-3xl rounded border border-white/10 bg-white/5 p-6 text-sm text-white/70">
-					Loading review card...
-				</div>
+			<div className="flex flex-1 items-center justify-center">
+				<Spinner />
 			</div>
 		);
 	}
 
 	if (!card) {
 		return (
-			<div className="min-h-screen bg-[#07070e] p-8 font-berkeley text-[#ededf5]">
-				<div className="mx-auto w-full max-w-3xl rounded border border-red-500/20 bg-red-500/6 p-6 text-sm text-red-200">
-					{loadError instanceof Error
-						? loadError.message
-						: "Could not load review card."}
-				</div>
-			</div>
+			<p className="m-6 rounded-lg border border-destructive/30 bg-destructive/8 p-4 text-destructive-foreground text-sm">
+				{error instanceof Error ? error.message : "Could not load review card."}
+			</p>
 		);
 	}
 
 	return (
-		<div className="min-h-screen bg-[#07070e] p-8 font-berkeley text-[#ededf5]">
-			<div className="mx-auto w-full max-w-3xl rounded border border-white/10 bg-white/5 p-6">
-				<div className="flex items-center gap-3">
-					<h1 className="text-2xl font-bold tracking-tight">{card.title}</h1>
-					<EditProblemButton
-						problemId={card.problemId}
-						title={card.title}
-						url={card.url}
-						neetcodeUrl={card.neetcodeUrl}
-						notes={card.notes}
-						tags={card.tags}
-					/>
-				</div>
-				<p className="mt-1 text-sm text-white/65">
-					Difficulty: {card.difficulty}
-				</p>
-				<div className="mt-3 flex flex-wrap gap-2">
-					{card.tags.map((tag) => (
-						<span
-							key={tag}
-							className="rounded border border-white/15 px-2 py-1 text-xs text-white/70"
-						>
-							{tag}
-						</span>
-					))}
-				</div>
-				<div className="mt-6 rounded border border-white/10 bg-black/20 p-4 text-sm text-white/80">
-					<p className="mb-2">
-						Open the problem, solve it in{" "}
-						{solveLanguage === "java" ? "Java" : "Python"}, then rate your
-						recall.
-					</p>
-					<a
-						href={card.url}
-						target="_blank"
-						rel="noreferrer"
-						className="underline decoration-white/35 underline-offset-4"
-					>
-						Open on LeetCode
-					</a>
-				</div>
-				<ProblemNote notes={card.notes} className="mt-4" />
-				<div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-					{RATINGS.map(({ rating, label }) => (
-						<button
-							key={rating}
-							type="button"
-							onClick={() => void handleRate(rating)}
-							disabled={isSubmitting}
-							className="flex flex-col items-center gap-1 rounded border border-white/20 px-3 py-2.5 text-sm hover:bg-white/10 disabled:opacity-60"
-						>
-							{label}
-							<span className="text-center text-[10px] font-normal text-white/35">
-								{RATING_HINTS[label]}
-							</span>
-						</button>
-					))}
-				</div>
-				{error ? <p className="mt-3 text-sm text-red-300">{error}</p> : null}
-			</div>
-		</div>
+		<ReviewFocus card={card} onRated={() => router.replace("/dashboard")} />
 	);
 }

@@ -16,14 +16,16 @@ export function ProblemNote({
 	return (
 		<details
 			className={cn(
-				"group rounded border border-white/10 bg-black/20 px-3 py-2 text-sm text-white/75",
+				"group rounded-lg border bg-muted/50 px-3 py-2 text-sm",
 				className,
 			)}
 		>
-			<summary className="cursor-pointer select-none text-xs uppercase tracking-wide text-white/45 hover:text-white/70">
+			<summary className="cursor-pointer select-none text-muted-foreground text-xs transition-colors hover:text-foreground">
 				Check your note
 			</summary>
-			<p className="mt-2 whitespace-pre-wrap leading-6">{notes}</p>
+			<p className="mt-2 whitespace-pre-wrap font-mono text-xs leading-6">
+				{notes}
+			</p>
 		</details>
 	);
 }

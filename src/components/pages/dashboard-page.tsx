@@ -2,544 +2,98 @@
 
 import { useHotkey } from "@tanstack/react-hotkeys";
 import { useQuery } from "@tanstack/react-query";
-import {
-	type ColumnDef,
-	getCoreRowModel,
-	getPaginationRowModel,
-	getSortedRowModel,
-	type PaginationState,
-	type SortingState,
-	useReactTable,
-} from "@tanstack/react-table";
-import { Search, Shuffle } from "lucide-react";
+import { CircleCheck } from "lucide-react";
 import Link from "next/link";
 import * as React from "react";
-import { SiLeetcode } from "react-icons/si";
 
-import { AddProblemDialog } from "@/components/dashboard/AddProblemDialog";
-import { DashboardSettingsDialog } from "@/components/dashboard/DashboardSettingsDialog";
-import {
-	PlatformChoiceDialog,
-	RandomReviewSessionDialog,
-} from "@/components/dashboard/RandomReviewDialogs";
-import { DataTable } from "@/components/data-table/data-table";
-import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import { EditProblemButton } from "@/components/problems/EditProblemDialog";
-import { ReviewRowContent } from "@/components/review/ReviewRowContent";
-import { Badge } from "@/components/ui/badge";
-import { BadgeOverflow } from "@/components/ui/badge-overflow";
-import { Input } from "@/components/ui/input";
-import { Kbd, KbdGroup } from "@/components/ui/kbd";
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { ReviewFocus } from "@/components/review/ReviewFocus";
+import { Button } from "@/components/ui/button";
+import { Kbd } from "@/components/ui/kbd";
 import { useAdaptiveNow } from "@/hooks/use-adaptive-now";
-import { useRandomReviewSession } from "@/hooks/use-random-review-session";
+import { useFocusedCard } from "@/hooks/use-focused-card";
 import { useRowNavHotkeys } from "@/hooks/use-row-hotkeys";
-import type { DailyReviewPlanSummary } from "@/lib/daily-review-plan";
-import { formatDueExact, formatDueRelative } from "@/lib/due-date";
 import { HOTKEY_LABELS, HOTKEYS } from "@/lib/hotkeys";
-import {
-	type DueCard as DashboardCard,
-	type DueCardsResponse,
-	fetchDueCards,
-	reviewQueryKeys,
-} from "@/lib/review.functions";
+import { fetchDueCards, reviewQueryKeys } from "@/lib/review.functions";
 
-export function DashboardPage({
-	initialDailyReviewPlan,
-}: {
-	initialDailyReviewPlan?: DueCardsResponse;
-}) {
-	const [addDialogOpen, setAddDialogOpen] = React.useState(false);
-	const [reviewCardId, setReviewCardId] = React.useState<string | null>(null);
-	const searchInputRef = React.useRef<HTMLInputElement>(null);
-	const [search, setSearch] = React.useState("");
-	const {
-		data: dailyReviewPlan,
-		error,
-		isLoading,
-	} = useQuery({
+/**
+ * Today's plan as a focus view: one card at a time, picked from the sidebar,
+ * the palette, J/K or digits. Rating a card advances to the next one.
+ */
+export function DashboardPage() {
+	const { data: plan, error } = useQuery({
 		queryKey: reviewQueryKeys.dueCards,
 		queryFn: fetchDueCards,
-		initialData: initialDailyReviewPlan,
 		staleTime: 30_000,
 	});
-	const plannedCards = dailyReviewPlan?.cards ?? [];
-	const reviewQueueCards = dailyReviewPlan?.reviewQueueCards ?? plannedCards;
-	const planSummary = dailyReviewPlan?.summary ?? null;
-	const deferredSearch = React.useDeferredValue(search.trim().toLowerCase());
-	const [sorting, setSorting] = React.useState<SortingState>([
-		{ id: "difficulty", desc: true },
-		{ id: "due", desc: false },
-	]);
-	const [pagination, setPagination] = React.useState<PaginationState>({
-		pageIndex: 0,
-		pageSize: 10,
-	});
-	const searchableRows = React.useMemo(
-		() =>
-			plannedCards.map((card) => ({
-				card,
-				searchText:
-					`${card.title} ${card.difficulty} ${card.tags.join(" ")}`.toLowerCase(),
-			})),
-		[plannedCards],
-	);
-	const filteredPlannedCards = React.useMemo(() => {
-		if (!deferredSearch) return plannedCards;
-		return searchableRows.flatMap(({ searchText, card }) =>
-			searchText.includes(deferredSearch) ? [card] : [],
-		);
-	}, [deferredSearch, plannedCards, searchableRows]);
+	const cards = plan?.cards ?? [];
+	const { focused, focus } = useFocusedCard(cards);
+	const index = focused ? cards.indexOf(focused) : -1;
 	const dueUnixList = React.useMemo(
-		() => filteredPlannedCards.map((card) => card.due),
-		[filteredPlannedCards],
+		() => cards.map((card) => card.due),
+		[cards],
 	);
 	const nowMs = useAdaptiveNow(dueUnixList);
 
-	function handleSearchChange(value: string) {
-		setSearch(value);
-		setPagination((prev) =>
-			prev.pageIndex === 0 ? prev : { ...prev, pageIndex: 0 },
+	const step = (delta: number) => {
+		const next = cards[index + delta];
+		if (next) focus(next);
+	};
+	useHotkey(HOTKEYS.nextCard, () => step(1), {
+		ignoreInputs: true,
+		meta: { name: "Next card", description: "Focus the next planned card" },
+	});
+	useHotkey(HOTKEYS.prevCard, () => step(-1), {
+		ignoreInputs: true,
+		meta: { name: "Previous card", description: "Focus the previous card" },
+	});
+	useRowNavHotkeys(cards.map((card) => ({ onSelect: () => focus(card) })));
+
+	if (error) {
+		return (
+			<p className="m-6 rounded-lg border border-destructive/30 bg-destructive/8 p-4 text-destructive-foreground text-sm">
+				{error instanceof Error
+					? error.message
+					: "Could not load today's plan."}
+			</p>
 		);
 	}
 
-	// ── Hotkeys ────────────────────────────────────────────────────────────
-	useHotkey(
-		HOTKEYS.searchFocus,
-		() => {
-			searchInputRef.current?.focus();
-			searchInputRef.current?.select();
-		},
-		{
-			preventDefault: true,
-			meta: { name: "Focus search", description: "Focus the search input" },
-		},
-	);
-
-	const columns = React.useMemo<ColumnDef<DashboardCard>[]>(
-		() => [
-			{
-				id: "rowNum",
-				enableSorting: false,
-				enableHiding: false,
-				header: () => null,
-				cell: ({ row, table }) => {
-					const num =
-						table.getRowModel().rows.findIndex((r) => r.id === row.id) + 1;
-					return (
-						<Kbd className="border border-white/15 bg-white/8 text-[10px] text-white/45">
-							{num}
-						</Kbd>
-					);
-				},
-				meta: { label: "#" },
-			},
-			{
-				id: "title",
-				accessorKey: "title",
-				header: ({ column }) => (
-					<DataTableColumnHeader column={column} label="Title" />
-				),
-				cell: ({ row }) => (
-					<div className="group/title flex max-w-[30rem] items-center gap-2">
-						<span className="truncate font-medium">{row.original.title}</span>
-						<EditProblemButton
-							problemId={row.original.problemId}
-							title={row.original.title}
-							url={row.original.url}
-							neetcodeUrl={row.original.neetcodeUrl}
-							notes={row.original.notes}
-							tags={row.original.tags}
-							className="opacity-0 transition-opacity group-hover/title:opacity-100"
-						/>
-					</div>
-				),
-			},
-			{
-				id: "open",
-				enableSorting: false,
-				enableHiding: false,
-				header: () => <span className="sr-only">Open</span>,
-				cell: ({ row }) => (
-					<div className="flex items-center gap-1.5">
-						<a
-							href={row.original.url}
-							target="_blank"
-							rel="noopener noreferrer"
-							aria-label={`Open ${row.original.title} on LeetCode`}
-							className="inline-flex size-8 shrink-0 items-center justify-center rounded border border-white/15 text-white/70 transition-colors duration-150 ease-out hover:border-white/30 hover:bg-white/10 hover:text-[#FFA116] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30"
-						>
-							<SiLeetcode className="size-3.5" />
-						</a>
-						{row.original.neetcodeUrl && (
-							<a
-								href={row.original.neetcodeUrl}
-								target="_blank"
-								rel="noopener noreferrer"
-								aria-label={`Open ${row.original.title} on NeetCode`}
-								className="inline-flex size-8 shrink-0 items-center justify-center rounded border border-white/15 text-white/70 transition-colors duration-150 ease-out hover:border-white/30 hover:bg-white/10 hover:text-[#10b981] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30"
-							>
-								<span className="text-[10px] font-bold tracking-tighter leading-none mt-[1px]">
-									NC
-								</span>
-							</a>
-						)}
-					</div>
-				),
-				meta: {
-					label: "Open",
-				},
-			},
-			{
-				id: "difficulty",
-				accessorFn: (row) =>
-					DIFFICULTY_RANK[row.difficulty.trim().toUpperCase()] ?? 0,
-				header: ({ column }) => (
-					<DataTableColumnHeader column={column} label="Difficulty" />
-				),
-				cell: ({ row }) => (
-					<span className="text-xs uppercase tracking-wide text-white/70">
-						{row.original.difficulty}
-					</span>
-				),
-			},
-			{
-				id: "tags",
-				accessorFn: (row) => row.tags.join(", "),
-				header: ({ column }) => (
-					<DataTableColumnHeader column={column} label="Tags" />
-				),
-				cell: ({ row }) => <TagsCell tags={row.original.tags} />,
-			},
-			{
-				id: "due",
-				accessorKey: "due",
-				header: ({ column }) => (
-					<DataTableColumnHeader column={column} label="Due" />
-				),
-				cell: ({ row }) => (
-					<DueDateCell dueUnix={row.original.due} nowMs={nowMs} />
-				),
-			},
-			{
-				id: "action",
-				enableSorting: false,
-				header: "Action",
-				cell: ({ row }) => (
-					<button
-						type="button"
-						onClick={() =>
-							setReviewCardId(
-								reviewCardId === row.original.cardId
-									? null
-									: row.original.cardId,
-							)
-						}
-						className="transform-gpu rounded border border-white/20 px-3 py-2 text-sm transition-colors duration-150 ease-out hover:bg-white/10 active:scale-[0.97] motion-reduce:transform-none motion-reduce:transition-none"
-					>
-						Review
-					</button>
-				),
-			},
-		],
-		[nowMs, reviewCardId],
-	);
-
-	const table = useReactTable({
-		data: filteredPlannedCards,
-		columns,
-		state: {
-			sorting,
-			pagination,
-		},
-		getRowId: (row) => row.cardId,
-		enableRowSelection: false,
-		onSortingChange: setSorting,
-		onPaginationChange: setPagination,
-		getCoreRowModel: getCoreRowModel(),
-		getSortedRowModel: getSortedRowModel(),
-		getPaginationRowModel: getPaginationRowModel(),
-	});
-	const handleRandomReviewSessionStart = React.useCallback(() => {
-		setReviewCardId(null);
-	}, []);
-	const randomReview = useRandomReviewSession({
-		cards: filteredPlannedCards,
-		sessionCards: reviewQueueCards,
-		isLoading,
-		isBlocked: addDialogOpen,
-		hasSearch: Boolean(deferredSearch),
-		onSessionStart: handleRandomReviewSessionStart,
-	});
-	useHotkey(
-		HOTKEYS.addProblem,
-		() => {
-			if (!randomReview.isActive) setAddDialogOpen(true);
-		},
-		{
-			ignoreInputs: true,
-			meta: { name: "Add problem", description: "Open the add problem dialog" },
-		},
-	);
-
-	const pageRows = table.getRowModel().rows.map((row) => ({
-		onSelect: () =>
-			setReviewCardId(
-				reviewCardId === row.original.cardId ? null : row.original.cardId,
-			),
-	}));
-	useRowNavHotkeys(pageRows, !randomReview.isActive);
-
-	return (
-		<div className="min-h-screen bg-[#07070e] p-8 font-berkeley text-[#ededf5]">
-			<div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
-				<header className="flex flex-wrap items-center justify-between gap-3">
-					<h1 className="text-2xl font-bold tracking-tight">
-						Daily Review Plan
-					</h1>
-					<div className="flex items-center gap-3 text-sm">
-						<button
-							type="button"
-							onClick={randomReview.start}
-							disabled={
-								isLoading || randomReview.isActive || plannedCards.length === 0
-							}
-							className="group inline-flex transform-gpu items-center gap-2 rounded border border-emerald-500/30 bg-emerald-500/[0.07] px-3 py-1.5 text-sm text-[#ededf5] transition-all duration-150 ease-out hover:border-emerald-400/50 hover:bg-emerald-500/15 active:scale-[0.975] disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transform-none"
-						>
-							<Shuffle className="size-4 text-emerald-300/80" />
-							Random
-							<Kbd className="border-emerald-400/30 bg-emerald-500/10 text-emerald-300/70 opacity-80">
-								{HOTKEY_LABELS.randomReview[0]}
-							</Kbd>
-						</button>
-						<AddProblemDialog
-							open={addDialogOpen}
-							onOpenChange={setAddDialogOpen}
-						/>
-						<DashboardSettingsDialog
-							platformPreference={randomReview.settings.platformPreference}
-							onPlatformPreferenceChange={
-								randomReview.settings.setPlatformPreference
-							}
-						/>
-						<Link
-							className="underline decoration-white/30 underline-offset-4"
-							href="/problems"
-						>
-							All problems
-						</Link>
-					</div>
-				</header>
-
-				{randomReview.notice ? (
-					<p className="rounded border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-white/65">
-						{randomReview.notice}
-					</p>
-				) : null}
-
-				{isLoading ? (
-					<div className="rounded border border-white/10 bg-white/5 p-5 text-sm text-white/70">
-						Loading daily review plan...
-					</div>
-				) : error ? (
-					<div className="rounded border border-red-500/20 bg-red-500/6 p-5 text-sm text-red-200">
-						{error instanceof Error
-							? error.message
-							: "Could not load daily review plan."}
-					</div>
-				) : plannedCards.length === 0 ? (
-					<div className="rounded border border-white/10 bg-white/5 p-5 text-sm text-white/70">
-						No reviews are ready right now.
-					</div>
-				) : (
-					<>
-						{planSummary ? <PlanSummaryBar summary={planSummary} /> : null}
-						<div className="flex items-center justify-between gap-3">
-							<div className="relative w-full max-w-sm">
-								<Search className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-2.5 size-4 text-white/45" />
-								<Input
-									ref={searchInputRef}
-									value={search}
-									onChange={(event) => handleSearchChange(event.target.value)}
-									placeholder="Search title, difficulty, tags..."
-									className="h-9 border-white/20 bg-white/[0.03] pl-8 pr-16 text-[#ededf5] placeholder:text-white/45 focus-visible:border-white/30 focus-visible:ring-white/20"
-									aria-label="Search due reviews"
-								/>
-								<KbdGroup className="-translate-y-1/2 pointer-events-none absolute top-1/2 right-2">
-									{HOTKEY_LABELS.searchFocus.map((key) => (
-										<Kbd
-											key={key}
-											className="border border-white/15 bg-white/8 text-[10px] text-white/50"
-										>
-											{key}
-										</Kbd>
-									))}
-								</KbdGroup>
-							</div>
-							{deferredSearch ? (
-								<p className="whitespace-nowrap text-sm text-white/60">
-									{filteredPlannedCards.length} result
-									{filteredPlannedCards.length === 1 ? "" : "s"}
-								</p>
-							) : null}
-						</div>
-						<DataTable
-							table={table}
-							showSelectionSummary={false}
-							className="[&_.data-table-shell]:border-white/10 [&_.data-table-shell]:bg-white/5 [&_[data-slot=table]]:min-w-[940px] [&_[data-slot=table-body]_tr]:border-white/10 [&_[data-slot=table-cell]]:p-3 [&_[data-slot=table-cell]:nth-child(2)]:w-12 [&_[data-slot=table-cell]:nth-child(2)]:py-2 [&_[data-slot=table-head]:nth-child(2)]:w-12 [&_[data-slot=table-head]:nth-child(2)]:py-2 [&_[data-slot=table-head]]:p-3 [&_[data-slot=table-head]]:text-xs [&_[data-slot=table-head]]:tracking-wide [&_[data-slot=table-head]]:uppercase [&_[data-slot=table-head]]:text-white/60 [&_[data-slot=table-header]_tr]:border-white/10"
-							isRowExpanded={(row) => reviewCardId === row.original.cardId}
-							renderExpandedRow={(row) => (
-								<ReviewRowContent
-									cardId={row.original.cardId}
-									notes={row.original.notes}
-									onClose={() => setReviewCardId(null)}
-								/>
-							)}
-						/>
-					</>
-				)}
-			</div>
-			<PlatformChoiceDialog
-				problem={randomReview.platformChoice.problem}
-				remember={randomReview.platformChoice.remember}
-				onRememberChange={randomReview.platformChoice.setRemember}
-				onChoose={randomReview.platformChoice.choose}
-				onCancel={randomReview.platformChoice.cancel}
-			/>
-			<RandomReviewSessionDialog
-				session={randomReview.sessionDialog.session}
-				isSubmitting={randomReview.sessionDialog.isSubmitting}
-				error={randomReview.sessionDialog.error}
-				onRate={(rating) => void randomReview.sessionDialog.rate(rating)}
-				onOpenAgain={randomReview.sessionDialog.openAgain}
-				onSkip={randomReview.sessionDialog.skip}
-			/>
-		</div>
-	);
-}
-
-function PlanSummaryBar({ summary }: { summary: DailyReviewPlanSummary }) {
-	const stats = [
-		{
-			label: "Planned",
-			value: `${summary.plannedCount}/${summary.dailyReviewCount}`,
-		},
-		{ label: "Review Queue", value: summary.reviewQueueCount },
-		{ label: "Waiting", value: summary.waitingCount },
-	];
-
-	return (
-		<div className="grid gap-2 rounded border border-white/10 bg-white/[0.035] p-3 sm:grid-cols-3">
-			{stats.map((stat) => (
-				<div key={stat.label} className="min-w-0">
-					<div className="text-[11px] uppercase tracking-wide text-white/45">
-						{stat.label}
-					</div>
-					<div className="mt-1 truncate font-semibold text-lg text-[#ededf5]">
-						{stat.value}
-					</div>
-				</div>
-			))}
-		</div>
-	);
-}
-
-const DIFFICULTY_RANK: Record<string, number> = {
-	EASY: 1,
-	MEDIUM: 2,
-	HARD: 3,
-};
-
-function DueDateCell({ dueUnix, nowMs }: { dueUnix: number; nowMs: number }) {
-	const [isClient, setIsClient] = React.useState(false);
-
-	React.useEffect(() => {
-		setIsClient(true);
-	}, []);
-
-	if (!isClient) {
-		return formatUtcFallback(dueUnix);
+	if (!focused) {
+		return <DoneForToday waitingCount={plan?.summary.waitingCount ?? 0} />;
 	}
 
-	return <LocalDueDate dueUnix={dueUnix} nowMs={nowMs} />;
-}
-
-const UTC_DATE_TIME_FORMATTER = new Intl.DateTimeFormat("en-US", {
-	dateStyle: "medium",
-	timeStyle: "short",
-	timeZone: "UTC",
-});
-
-function formatUtcFallback(dueUnix: number) {
-	return `${UTC_DATE_TIME_FORMATTER.format(new Date(dueUnix * 1000))} (UTC)`;
-}
-
-function LocalDueDate({ dueUnix, nowMs }: { dueUnix: number; nowMs: number }) {
-	const dueDate = React.useMemo(() => new Date(dueUnix * 1000), [dueUnix]);
-	const relative = React.useMemo(
-		() => formatDueRelative(dueDate, new Date(nowMs)),
-		[dueDate, nowMs],
-	);
-	const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-	const exact = React.useMemo(
-		() => `${formatDueExact(dueDate)} (${timeZone})`,
-		[dueDate, timeZone],
-	);
-
 	return (
-		<Tooltip>
-			<TooltipTrigger asChild>
-				<span className="cursor-help text-white/80">{relative}</span>
-			</TooltipTrigger>
-			<TooltipContent
-				sideOffset={6}
-				className="border border-white/15 bg-[#0d0d16] text-[#ededf5]"
-			>
-				{exact}
-			</TooltipContent>
-		</Tooltip>
+		<ReviewFocus
+			key={focused.cardId}
+			card={focused}
+			nowMs={nowMs}
+			// The rated card drops out of the plan on refetch; land on its
+			// neighbour instead of jumping back to the top.
+			onRated={() => focus(cards[index + 1] ?? cards[index - 1] ?? null)}
+		/>
 	);
 }
 
-function TagsCell({ tags }: { tags: string[] }) {
-	const fullTags = tags.join(", ");
-
+function DoneForToday({ waitingCount }: { waitingCount: number }) {
 	return (
-		<Tooltip>
-			<TooltipTrigger asChild>
-				<div className="max-w-[22rem] cursor-help">
-					<BadgeOverflow
-						items={tags}
-						lineCount={2}
-						renderBadge={(_, label) => (
-							<Badge
-								variant="outline"
-								className="h-5 border-white/15 bg-transparent px-1.5 text-[11px] text-white/70"
-							>
-								{label}
-							</Badge>
-						)}
-						renderOverflow={(count) => (
-							<Badge
-								variant="outline"
-								className="h-5 border-white/20 bg-white/[0.04] px-1.5 text-[11px] text-white/80"
-							>
-								+{count}
-							</Badge>
-						)}
-					/>
-				</div>
-			</TooltipTrigger>
-			<TooltipContent
-				sideOffset={6}
-				className="max-w-[32rem] border border-white/15 bg-[#0d0d16] text-[#ededf5]"
-			>
-				{fullTags || "No tags"}
-			</TooltipContent>
-		</Tooltip>
+		<div className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
+			<CircleCheck className="size-8 text-success-foreground" />
+			<div className="flex flex-col gap-1">
+				<h2 className="font-semibold text-lg">Done for today</h2>
+				<p className="max-w-sm text-muted-foreground text-sm">
+					{waitingCount > 0
+						? `${waitingCount} more due, held back to keep today to one study block.`
+						: "Nothing else is due. Add a problem to keep the queue moving."}
+				</p>
+			</div>
+			<div className="flex items-center gap-2">
+				<Button variant="outline" render={<Link href="/problems" />}>
+					All problems
+				</Button>
+				<span className="text-muted-foreground text-xs">
+					or press <Kbd>{HOTKEY_LABELS.addProblem[0]}</Kbd> to add one
+				</span>
+			</div>
+		</div>
 	);
 }

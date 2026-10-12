@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useEffect } from "react";
 
+import { StandalonePage } from "@/components/shell/StandalonePage";
+import { Button } from "@/components/ui/button";
+
 export default function GlobalError({
 	error,
 	reset,
@@ -15,33 +18,22 @@ export default function GlobalError({
 	}, [error]);
 
 	return (
-		<div className="min-h-screen bg-[#07070e] p-8 font-berkeley text-[#ededf5]">
-			<div className="mx-auto w-full max-w-3xl rounded border border-white/10 bg-white/5 p-6">
-				<h1 className="text-xl font-semibold tracking-tight">
-					Something went wrong
-				</h1>
-				<p className="mt-2 text-sm text-white/75">
-					The page failed to render. You can retry or go back to the dashboard.
-				</p>
-				<div className="mt-4 rounded border border-white/10 bg-black/25 p-3 text-sm text-white/80">
-					{error.message}
-				</div>
-				<div className="mt-5 flex items-center gap-3">
-					<button
-						type="button"
-						onClick={() => reset()}
-						className="rounded border border-white/20 px-3 py-2 text-sm hover:bg-white/10"
-					>
-						Retry
-					</button>
-					<Link
-						href="/dashboard"
-						className="rounded border border-white/20 px-3 py-2 text-sm hover:bg-white/10"
-					>
-						Go to dashboard
-					</Link>
-				</div>
+		<StandalonePage>
+			<h1 className="font-semibold text-xl tracking-tight">
+				Something went wrong
+			</h1>
+			<p className="mt-2 text-muted-foreground text-sm">
+				The page failed to render. Retry, or head back to today's plan.
+			</p>
+			<pre className="mt-4 overflow-x-auto rounded-lg border bg-muted/50 p-3 font-mono text-destructive-foreground text-xs">
+				{error.message}
+			</pre>
+			<div className="mt-6 flex items-center gap-2">
+				<Button onClick={() => reset()}>Retry</Button>
+				<Button variant="outline" render={<Link href="/dashboard" />}>
+					Go to today
+				</Button>
 			</div>
-		</div>
+		</StandalonePage>
 	);
 }

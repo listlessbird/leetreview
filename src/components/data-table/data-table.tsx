@@ -1,5 +1,9 @@
-import { flexRender, type Row, type Table as TanstackTable } from "@tanstack/react-table";
-import * as React from "react";
+import {
+	flexRender,
+	type Row,
+	type Table as TanstackTable,
+} from "@tanstack/react-table";
+import type * as React from "react";
 
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import {
@@ -10,50 +14,33 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { getColumnPinningStyle } from "@/lib/data-table";
 import { cn } from "@/lib/utils";
 
-interface DataTableProps<TData> extends React.ComponentProps<"div"> {
-	table: TanstackTable<TData>;
-	actionBar?: React.ReactNode;
-	showSelectionSummary?: boolean;
-	/** When true for a row, that row's cells are replaced with renderExpandedRow output. */
-	isRowExpanded?: (row: Row<TData>) => boolean;
-	renderExpandedRow?: (row: Row<TData>, colSpan: number) => React.ReactNode;
-}
-
+/**
+ * A TanStack table in a bordered card with pagination below. A row for which
+ * `isRowExpanded` is true renders `renderExpandedRow` across all columns
+ * instead of its cells.
+ */
 export function DataTable<TData>({
 	table,
-	actionBar,
-	showSelectionSummary = true,
 	isRowExpanded,
 	renderExpandedRow,
-	children,
 	className,
-	...props
-}: DataTableProps<TData>) {
+}: {
+	table: TanstackTable<TData>;
+	isRowExpanded?: (row: Row<TData>) => boolean;
+	renderExpandedRow?: (row: Row<TData>) => React.ReactNode;
+	className?: string;
+}) {
 	return (
-		<div
-			className={cn(
-				"data-table-root flex w-full flex-col gap-2.5 overflow-auto",
-				className,
-			)}
-			{...props}
-		>
-			{children}
-			<div className="data-table-shell animate-in fade-in-0 overflow-hidden rounded-md border duration-200 ease-out motion-reduce:animate-none">
-				<Table className="[&_tbody_tr[data-slot=table-row]:hover]:!bg-transparent [&_thead_tr[data-slot=table-row]:hover]:!bg-transparent">
+		<div className={cn("flex w-full flex-col gap-3", className)}>
+			<div className="overflow-hidden rounded-xl border bg-card">
+				<Table>
 					<TableHeader>
 						{table.getHeaderGroups().map((headerGroup) => (
-							<TableRow key={headerGroup.id}>
+							<TableRow key={headerGroup.id} className="hover:bg-transparent">
 								{headerGroup.headers.map((header) => (
-									<TableHead
-										key={header.id}
-										colSpan={header.colSpan}
-										style={{
-											...getColumnPinningStyle({ column: header.column }),
-										}}
-									>
+									<TableHead key={header.id} colSpan={header.colSpan}>
 										{header.isPlaceholder
 											? null
 											: flexRender(
@@ -66,42 +53,35 @@ export function DataTable<TData>({
 						))}
 					</TableHeader>
 					<TableBody>
-						{table.getRowModel().rows?.length ? (
-							table.getRowModel().rows.map((row) => {
-								const expanded = isRowExpanded?.(row) ?? false;
-								const colSpan = row.getVisibleCells().length;
-								return (
-									<TableRow
-										key={row.id}
-										data-state={row.getIsSelected() && "selected"}
-									>
-										{expanded && renderExpandedRow ? (
-											<TableCell colSpan={colSpan} className="animate-in fade-in-0 p-0 duration-150">
-												{renderExpandedRow(row, colSpan)}
-											</TableCell>
-										) : (
-											row.getVisibleCells().map((cell) => (
-												<TableCell
-													key={cell.id}
-													style={{
-														...getColumnPinningStyle({ column: cell.column }),
-													}}
-												>
+						{table.getRowModel().rows.length ? (
+							table.getRowModel().rows.map((row) => (
+								<TableRow key={row.id} className="group/row">
+									{isRowExpanded?.(row) && renderExpandedRow ? (
+										<TableCell
+											colSpan={row.getVisibleCells().length}
+											className="p-0"
+										>
+											{renderExpandedRow(row)}
+										</TableCell>
+									) : (
+										row
+											.getVisibleCells()
+											.map((cell) => (
+												<TableCell key={cell.id}>
 													{flexRender(
 														cell.column.columnDef.cell,
 														cell.getContext(),
 													)}
 												</TableCell>
 											))
-										)}
-									</TableRow>
-								);
-							})
+									)}
+								</TableRow>
+							))
 						) : (
 							<TableRow>
 								<TableCell
 									colSpan={table.getAllColumns().length}
-									className="h-24 text-center"
+									className="h-24 text-center text-muted-foreground"
 								>
 									No results.
 								</TableCell>
@@ -110,15 +90,7 @@ export function DataTable<TData>({
 					</TableBody>
 				</Table>
 			</div>
-			<div className="data-table-footer flex flex-col gap-2.5">
-				<DataTablePagination
-					table={table}
-					showSelectionSummary={showSelectionSummary}
-				/>
-				{actionBar &&
-					table.getFilteredSelectedRowModel().rows.length > 0 &&
-					actionBar}
-			</div>
+			<DataTablePagination table={table} />
 		</div>
 	);
 }

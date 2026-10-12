@@ -4,16 +4,19 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Pencil } from "lucide-react";
 import * as React from "react";
 
+import { Button } from "@/components/ui/button";
 import {
 	Dialog,
 	DialogClose,
-	DialogContent,
 	DialogDescription,
 	DialogFooter,
 	DialogHeader,
+	DialogPanel,
+	DialogPopup,
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -49,8 +52,9 @@ export function EditProblemButton({
 
 	return (
 		<>
-			<button
-				type="button"
+			<Button
+				size="icon-xs"
+				variant="ghost"
 				onClick={(event) => {
 					event.stopPropagation();
 					setHasOpened(true);
@@ -58,14 +62,13 @@ export function EditProblemButton({
 				}}
 				aria-label={`Edit ${title}`}
 				className={cn(
-					"inline-flex size-6 shrink-0 items-center justify-center rounded border border-white/15 text-white/55 transition-colors duration-150 ease-out hover:border-white/30 hover:bg-white/10 hover:text-white focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/30",
 					hoverReveal &&
-						"opacity-0 transition-opacity group-hover/row:opacity-100",
+						"opacity-0 transition-opacity focus-visible:opacity-100 group-hover/row:opacity-100",
 					className,
 				)}
 			>
-				<Pencil className="size-3" />
-			</button>
+				<Pencil />
+			</Button>
 			{hasOpened ? (
 				<EditProblemDialog
 					open={open}
@@ -164,120 +167,94 @@ function EditProblemDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={handleOpenChange}>
-			<DialogContent
-				showCloseButton={false}
-				className="border-white/10 bg-[#11121a] text-[#ededf5] sm:max-w-lg"
+			<DialogPopup
+				className="sm:max-w-lg"
 				onClick={(event) => event.stopPropagation()}
 			>
-				<DialogHeader className="flex-row items-start justify-between gap-3">
-					<div className="flex flex-col gap-1">
-						<DialogTitle className="text-lg font-semibold text-[#ededf5]">
-							Edit problem
-						</DialogTitle>
-						<DialogDescription className="text-sm text-white/55">
-							{title}
-						</DialogDescription>
-					</div>
-					<DialogClose asChild>
-						<button
-							type="button"
-							disabled={mutation.isPending}
-							className="shrink-0 rounded border border-white/20 px-2 py-1 text-xs text-white/60 transition-colors duration-150 ease hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+				<form className="contents" onSubmit={handleSubmit}>
+					<DialogHeader>
+						<DialogTitle>Edit problem</DialogTitle>
+						<DialogDescription>{title}</DialogDescription>
+					</DialogHeader>
+					<DialogPanel className="flex flex-col gap-4">
+						<Field label="LeetCode URL" htmlFor={`${problemId}-url`}>
+							<Input
+								id={`${problemId}-url`}
+								type="url"
+								required
+								value={urlValue}
+								onChange={(e) => setUrlValue(e.target.value)}
+								placeholder="https://leetcode.com/problems/..."
+							/>
+						</Field>
+						<Field
+							label="NeetCode URL"
+							htmlFor={`${problemId}-neetcode`}
+							hint="Optional"
 						>
-							Close
-						</button>
-					</DialogClose>
-				</DialogHeader>
-
-				<form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-					<Field label="LeetCode URL" htmlFor={`${problemId}-url`}>
-						<Input
-							id={`${problemId}-url`}
-							type="url"
-							required
-							value={urlValue}
-							onChange={(e) => setUrlValue(e.target.value)}
-							placeholder="https://leetcode.com/problems/..."
-							className="border-white/15 bg-white/3 text-[#ededf5] placeholder:text-white/30 focus-visible:border-white/30 focus-visible:ring-0"
-						/>
-					</Field>
-					<Field
-						label="NeetCode URL"
-						htmlFor={`${problemId}-neetcode`}
-						hint="Optional"
-					>
-						<Input
-							id={`${problemId}-neetcode`}
-							type="url"
-							value={neetcodeValue}
-							onChange={(e) => setNeetcodeValue(e.target.value)}
-							placeholder="https://neetcode.io/problems/..."
-							className="border-white/15 bg-white/3 text-[#ededf5] placeholder:text-white/30 focus-visible:border-white/30 focus-visible:ring-0"
-						/>
-					</Field>
-					<Field
-						label="Tags"
-						htmlFor={`${problemId}-tags`}
-						hint="Comma-separated"
-					>
-						<Input
-							id={`${problemId}-tags`}
-							type="text"
-							value={tagsValue}
-							onChange={(e) => setTagsValue(e.target.value)}
-							placeholder="array, hash-table, two-pointers"
-							className="border-white/15 bg-white/3 text-[#ededf5] placeholder:text-white/30 focus-visible:border-white/30 focus-visible:ring-0"
-						/>
-					</Field>
-					<Field
-						label="Note"
-						htmlFor={`${problemId}-notes`}
-						hint="Pattern, key insight, gotcha"
-					>
-						<Textarea
-							id={`${problemId}-notes`}
-							value={notesValue}
-							onChange={(e) => setNotesValue(e.target.value)}
-							maxLength={2000}
-							rows={3}
-							placeholder={
-								"Sliding window over counts.\nShrink while window is invalid.\nAnswer is max window length."
-							}
-							className="border-white/15 bg-white/3 text-[#ededf5] placeholder:text-white/30 focus-visible:border-white/30 focus-visible:ring-0"
-						/>
-					</Field>
-
-					{errorMessage ? (
-						<p className="rounded border border-red-500/20 bg-red-500/6 px-3 py-2 text-sm text-red-300">
-							{errorMessage}
-						</p>
-					) : null}
-
-					<DialogFooter className="gap-2">
-						<DialogClose asChild>
-							<button
-								type="button"
-								disabled={mutation.isPending}
-								className="rounded border border-white/15 px-3 py-1.5 text-sm text-white/70 transition-colors duration-150 ease-out hover:bg-white/8 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
-							>
-								Cancel
-							</button>
+							<Input
+								id={`${problemId}-neetcode`}
+								type="url"
+								value={neetcodeValue}
+								onChange={(e) => setNeetcodeValue(e.target.value)}
+								placeholder="https://neetcode.io/problems/..."
+							/>
+						</Field>
+						<Field
+							label="Tags"
+							htmlFor={`${problemId}-tags`}
+							hint="Comma-separated"
+						>
+							<Input
+								id={`${problemId}-tags`}
+								type="text"
+								value={tagsValue}
+								onChange={(e) => setTagsValue(e.target.value)}
+								placeholder="array, hash-table, two-pointers"
+							/>
+						</Field>
+						<Field
+							label="Note"
+							htmlFor={`${problemId}-notes`}
+							hint="Pattern, key insight, gotcha"
+						>
+							<Textarea
+								id={`${problemId}-notes`}
+								value={notesValue}
+								onChange={(e) => setNotesValue(e.target.value)}
+								maxLength={2000}
+								rows={3}
+								className="font-mono"
+								placeholder={
+									"Sliding window over counts.\nShrink while window is invalid.\nAnswer is max window length."
+								}
+							/>
+						</Field>
+						{errorMessage ? (
+							<p className="text-destructive-foreground text-sm">
+								{errorMessage}
+							</p>
+						) : null}
+					</DialogPanel>
+					<DialogFooter>
+						<DialogClose
+							disabled={mutation.isPending}
+							render={<Button variant="ghost" />}
+						>
+							Cancel
 						</DialogClose>
-						<button
-							type="submit"
-							disabled={mutation.isPending}
-							className="inline-flex items-center gap-2 rounded border border-emerald-500/30 bg-emerald-500/[0.07] px-3 py-1.5 text-sm text-[#ededf5] transition-colors duration-150 ease-out hover:border-emerald-400/50 hover:bg-emerald-500/15 active:scale-[0.975] disabled:cursor-not-allowed disabled:opacity-50"
-						>
-							{mutation.isPending ? <Spinner className="size-3.5" /> : null}
+						<Button type="submit" disabled={mutation.isPending}>
+							{mutation.isPending ? <Spinner /> : null}
 							Save changes
-						</button>
+						</Button>
 					</DialogFooter>
 				</form>
-			</DialogContent>
+			</DialogPopup>
 		</Dialog>
 	);
 }
 
+/** A labelled form row with an optional right-aligned hint. */
 function Field({
 	label,
 	htmlFor,
@@ -292,14 +269,9 @@ function Field({
 	return (
 		<div className="flex flex-col gap-1.5">
 			<div className="flex items-center justify-between gap-2">
-				<label
-					htmlFor={htmlFor}
-					className="text-xs font-medium uppercase tracking-wide text-white/55"
-				>
-					{label}
-				</label>
+				<Label htmlFor={htmlFor}>{label}</Label>
 				{hint ? (
-					<span className="text-[10px] text-white/35">{hint}</span>
+					<span className="text-muted-foreground text-xs">{hint}</span>
 				) : null}
 			</div>
 			{children}

@@ -5,11 +5,18 @@
 export const HOTKEYS = {
 	/** Open the Add Problem dialog */
 	addProblem: "C",
-	/** Focus the search input — Mod resolves to Ctrl on Linux/Windows, Cmd on Mac */
-	searchFocus: "Mod+K",
-	/** Start a Random Review Session */
+	/** Open the command palette — Mod resolves to Ctrl on Linux/Windows, Cmd on Mac */
+	commandPalette: "Mod+K",
+	/** Focus the problems table search */
+	searchFocus: "/",
+	/** Jump to a random card in today's plan and open it */
 	randomReview: "R",
-	/** Rate the current review — only active while a review row is expanded */
+	/** Move through today's queue in the focus view */
+	nextCard: "J",
+	prevCard: "K",
+	/** Open the focused problem on its platform */
+	openProblem: "O",
+	/** Rate the focused review */
 	rateAgain: "A",
 	rateHard: "H",
 	rateGood: "G",
@@ -21,8 +28,12 @@ export type HotkeyId = keyof typeof HOTKEYS;
 /** Human-readable label strings for Kbd display, in key order */
 export const HOTKEY_LABELS: Record<HotkeyId, string[]> = {
 	addProblem: ["C"],
-	searchFocus: ["Ctrl", "K"],
+	commandPalette: ["Ctrl", "K"],
+	searchFocus: ["/"],
 	randomReview: ["R"],
+	nextCard: ["J"],
+	prevCard: ["K"],
+	openProblem: ["O"],
 	rateAgain: ["A"],
 	rateHard: ["H"],
 	rateGood: ["G"],

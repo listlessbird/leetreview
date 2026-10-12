@@ -6,14 +6,6 @@ export type RandomReviewProblem = {
 	neetcodeUrl: string | null;
 };
 
-export type RandomReviewSession<
-	TProblem extends RandomReviewProblem = RandomReviewProblem,
-> = {
-	problem: TProblem;
-	platform: ReviewPlatform;
-	url: string;
-};
-
 export type PlatformResolution =
 	| {
 			type: "open";

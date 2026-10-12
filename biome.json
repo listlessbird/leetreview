@@ -10,7 +10,7 @@
 		"includes": [
 			"**/src/**/*",
 			"**/.vscode/**/*",
-			"!**/src/styles.css"
+			"!**/src/app/globals.css"
 		]
 	},
 	"formatter": {
